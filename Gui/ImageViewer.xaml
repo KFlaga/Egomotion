@@ -1,0 +1,30 @@
+﻿<ContentControl x:Class="Egomotion.ImageViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="300" d:DesignWidth="300">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="100*"/>
+            <ColumnDefinition Width="20"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="100*"/>
+            <RowDefinition Height="20"/>
+        </Grid.RowDefinitions>
+        <ScrollBar x:Name="hScroll" Grid.Row="1" Grid.Column="0" IsEnabled="False" Orientation="Horizontal" ValueChanged="HScroll_ValueChanged"/>
+        <ScrollBar x:Name="vScroll" Grid.Row="0" Grid.Column="1" IsEnabled="False" ValueChanged="VScroll_ValueChanged"/>
+        <Border x:Name="zoomBorder" ClipToBounds="True" Background="Gray">
+            <Image x:Name="image" RenderTransformOrigin="0.5, 0.5">
+                <Image.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="scale"/>
+                        <TranslateTransform x:Name="translation"/>
+                    </TransformGroup>
+                </Image.RenderTransform>
+            </Image>
+        </Border>
+    </Grid>
+</ContentControl>
