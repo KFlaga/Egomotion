@@ -6,20 +6,45 @@
         xmlns:local="clr-namespace:Egomotion"
         mc:Ignorable="d"
         Title="MainWindow" Height="600" Width="500">
-    <Grid>
-        <ScrollViewer>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="100*"/>
-                    <RowDefinition Height="100*"/>
-                </Grid.RowDefinitions>
-                <local:ImageViewer Grid.Row="0" x:Name="imageViewer"/>
-                <StackPanel x:Name="functions" Grid.Row="1">
-                    <Button Click="LoadImage">Load Image</Button>
-                    <Button Click="ProcessImage">Process Image</Button>
-                    <local:AlgorithmParametersInput x:Name="parametersInput"/>
-                </StackPanel>
-            </Grid>
-        </ScrollViewer>
-    </Grid>
+    <TabControl>
+        <TabItem Header="Test Image">
+            <ScrollViewer>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="100*"/>
+                        <RowDefinition Height="100*"/>
+                    </Grid.RowDefinitions>
+                    <local:ImageViewer Grid.Row="0" x:Name="imageViewer"/>
+                    <StackPanel Grid.Row="1">
+                        <Button Click="LoadImage">Load Image</Button>
+                        <Button Click="ProcessImage">Process Image</Button>
+                        <local:AlgorithmParametersInput x:Name="parametersInput"/>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Test Dataset">
+            <ScrollViewer>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="100*"/>
+                        <RowDefinition Height="100*"/>
+                    </Grid.RowDefinitions>
+                    <Image Grid.Row="0" x:Name="videoViewer"/>
+                    <StackPanel Grid.Row="1">
+                        <Button Click="LoadDataset">Load Dataset</Button>
+                        <StackPanel Orientation="Horizontal">
+                            <Label>Frames:</Label>
+                            <Label x:Name="frameCountLabel">0</Label>
+                            <Label>Current frame:</Label>
+                            <Label x:Name="frameCurrentLabel">0</Label>
+                            <Label>Start from:</Label>
+                            <TextBox x:Name="frameStartFromtext" Width="70" VerticalContentAlignment="Center">0</TextBox>
+                        </StackPanel>
+                        <Button Click="PlayDataset">Play</Button>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
 </Window>

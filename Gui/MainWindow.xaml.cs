@@ -3,7 +3,11 @@ using Emgu.CV.Structure;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Timers;
 using System.Windows;
+using System.Windows.Media.Imaging;
 
 namespace Egomotion
 {
@@ -116,6 +120,71 @@ namespace Egomotion
         {
             RotatedRect rect = new RotatedRect(center, size, 0);
             CvInvoke.Ellipse(image, rect, color.MCvScalar, 1);
+        }
+        
+        Dataset dataset;
+        Timer playTimer;
+        int currentFrame = 0;
+        TimeSpan datasetInterval = TimeSpan.FromMilliseconds(20);
+        
+        private void LoadDataset(object sender, RoutedEventArgs e)
+        {
+            FileOp.OpenFolder((dir) =>
+            {
+                try
+                {
+                    dataset = Dataset.Load(dir, datasetInterval);
+                    frameCountLabel.Content = dataset.Frames.Count;
+                }
+                catch(Exception ex)
+                {
+                    MessageBox.Show(string.Format("{0} is not a valid dataset. {1}", dir, ex.Message));
+                }
+            });
+        }
+
+        private void PlayDataset(object sender, RoutedEventArgs e)
+        {
+            if(dataset == null)
+            {
+                MessageBox.Show("Dataset is not loaded");
+            }
+
+            if(playTimer != null)
+            {
+                playTimer.Stop();
+            }
+            
+            playTimer = new Timer()
+            {
+                Interval = datasetInterval.TotalMilliseconds,
+                AutoReset = true
+            };
+            playTimer.Elapsed += Timer_Elapsed;
+
+            bool isValidFrame = int.TryParse(frameStartFromtext.Text, out int startFrom);
+            if(isValidFrame)
+            {
+                isValidFrame = startFrom >= 0 && startFrom < dataset.Frames.Count;
+            }
+            currentFrame = isValidFrame ? startFrom : 0;
+            playTimer.Start();
+        }
+
+        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            var frame = dataset.Frames[currentFrame];
+            currentFrame++;
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+                videoViewer.Source = new BitmapImage(new Uri(frame.ImageFile, UriKind.Absolute));
+                frameCurrentLabel.Content = currentFrame;
+            }));
+
+            if(currentFrame >= dataset.Frames.Count)
+            {
+                playTimer.Stop();
+            }
         }
     }
 }

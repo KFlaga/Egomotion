@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Windows;
+using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace Egomotion
 {
@@ -48,6 +49,25 @@ namespace Egomotion
                     MessageBox.Show("Error while writing to file: " + exc.Message, "Error");
                 }
                 fs.Close();
+            }
+        }
+
+        public static void OpenFolder(Action<string> onFolderOpen)
+        {
+            CommonOpenFileDialog fileDialog = new CommonOpenFileDialog();
+            fileDialog.IsFolderPicker = true;
+            fileDialog.EnsurePathExists = true;
+            var res = fileDialog.ShowDialog();
+            if (res == CommonFileDialogResult.Ok)
+            {
+                try
+                {
+                    onFolderOpen(fileDialog.FileName);
+                }
+                catch (Exception exc)
+                {
+                    MessageBox.Show("Error while reading from file: " + exc.Message, "Error");
+                }
             }
         }
     }

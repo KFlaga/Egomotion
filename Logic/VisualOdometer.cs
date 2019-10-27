@@ -8,10 +8,15 @@ namespace Egomotion
     public struct OdometerFrame
     {
         public TimeSpan TimeDiff { get; set; }
-        public Mat Translation { get; set; }
-        public Mat Velocity { get; set; }
-        public Mat Rotation { get; set; } // Matrix or euler angles ?
-        public Mat AngularVelocity { get; set; }
+
+        public Image<Gray, double> Translation { get; set; } // 3-vector
+        public Image<Gray, double> TranslationDiff { get; set; } // 3-vector
+
+        public Image<Gray, double> Rotation { get; set; } // 3-vector - euler angles (xyz) in degrees
+        public Image<Gray, double> RotationDiff { get; set; } // 3-vector - euler angles (xyz) in degrees
+
+        public Image<Gray, double> Velocity { get; set; } // 3-vector
+        public Image<Gray, double> AngularVelocity { get; set; } // 3-vector
     }
 
     public interface IVisualOdometer
