@@ -1,0 +1,46 @@
+
+Ze strony:
+
+https://github.com/torrvision/CollaborativeSLAMDataset/blob/master/download-normal.sh
+
+zestawy:
+
+http://www.robots.ox.ac.uk/~tvg/projects/CollaborativeSLAM/data/Flat-frames_resized-kitchen2study.zip
+http://www.robots.ox.ac.uk/~tvg/projects/CollaborativeSLAM/data/Flat-frames_resized-turret2sittingroom.zip
+http://www.robots.ox.ac.uk/~tvg/projects/CollaborativeSLAM/data/Flat-frames_resized-study2sittingroom.zip
+http://www.robots.ox.ac.uk/~tvg/projects/CollaborativeSLAM/data/Flat-frames_resized-bathroom2study.zip  
+
+Oraz zestawy ze strony (RGB Sequence + Ground-truth Trajectory):
+
+http://redwood-data.org/indoor/dataset.html
+
+
+Do konwersji na format wspólny trzeba utworzyć strukturę katalogów:
+
+jakiś root:
+-- kitchen2study
+ |--- frame-XXXXX.color.png
+ |--- frame-XXXXX.pose.txt
+-- turret2sittingroom
+-- study2sittingroom
+-- bathroom2study
+-- office
+ |--- XXXX.jpg
+ |--- camera.txt  <-- temu plikowi zmienić nazwę manualnie
+-- office2
+-- livingroom
+-- livingroom2
+-- convert_CollaborativeSLAMDataset.py
+-- convert_redwood.py
+
+Skrypty pythonowe utworzą foldery (może to trochę trwać):
+
+-- common_kitchen2study
+ |--- images
+    |--- XXXX.png
+ |--- cameras
+    |--- XXXX.txt
+
+-- common_turret2sittingroom
+
+itp.
