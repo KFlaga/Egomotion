@@ -134,57 +134,13 @@ namespace Egomotion
                 try
                 {
                     dataset = Dataset.Load(dir, datasetInterval);
-                    frameCountLabel.Content = dataset.Frames.Count;
+                    player.Frames = dataset.Frames;
                 }
                 catch(Exception ex)
                 {
                     MessageBox.Show(string.Format("{0} is not a valid dataset. {1}", dir, ex.Message));
                 }
             });
-        }
-
-        private void PlayDataset(object sender, RoutedEventArgs e)
-        {
-            if(dataset == null)
-            {
-                MessageBox.Show("Dataset is not loaded");
-            }
-
-            if(playTimer != null)
-            {
-                playTimer.Stop();
-            }
-            
-            playTimer = new Timer()
-            {
-                Interval = datasetInterval.TotalMilliseconds,
-                AutoReset = true
-            };
-            playTimer.Elapsed += Timer_Elapsed;
-
-            bool isValidFrame = int.TryParse(frameStartFromtext.Text, out int startFrom);
-            if(isValidFrame)
-            {
-                isValidFrame = startFrom >= 0 && startFrom < dataset.Frames.Count;
-            }
-            currentFrame = isValidFrame ? startFrom : 0;
-            playTimer.Start();
-        }
-
-        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            var frame = dataset.Frames[currentFrame];
-            currentFrame++;
-            Dispatcher.BeginInvoke((Action)(() =>
-            {
-                videoViewer.Source = new BitmapImage(new Uri(frame.ImageFile, UriKind.Absolute));
-                frameCurrentLabel.Content = currentFrame;
-            }));
-
-            if(currentFrame >= dataset.Frames.Count)
-            {
-                playTimer.Stop();
-            }
         }
     }
 }
