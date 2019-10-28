@@ -1,6 +1,7 @@
 ﻿using Emgu.CV.Structure;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,7 +15,7 @@ namespace Egomotion
         public string ImageFile { get; set; }
         public string CameraFile { get; set; }
 
-        public Emgu.CV.Image<Gray, double> ProjectionMatrix { get; set; }
+        public Emgu.CV.Image<Arthmetic, double> TransformationMatrix { get; set; }
 
         public OdometerFrame Odometry { get; set; }
     }
@@ -44,7 +45,7 @@ namespace Egomotion
             }
 
             LoadProjectionMatrices(dataset);
-            DecomposeProjectionMatrices(dataset, interval);
+            DecomposeTransformationMatrices(dataset, interval);
             return dataset;
         }
 
@@ -77,60 +78,39 @@ namespace Egomotion
                 {
                     TextReader reader = new StreamReader(s);
 
-                    frame.ProjectionMatrix = new Emgu.CV.Image<Gray, double>(4, 4);
+                    frame.TransformationMatrix = new Emgu.CV.Image<Arthmetic, double>(4, 4);
                     for (int row = 0; row < 4; ++row)
                     {
                         string line = reader.ReadLine();
                         string[] cols = line.Split();
                         for(int col = 0; col < 4; ++col)
                         {
-                            frame.ProjectionMatrix[row, col] = new Gray(double.Parse(cols[col], System.Globalization.CultureInfo.InvariantCulture));
+                            frame.TransformationMatrix[row, col] = double.Parse(cols[col], System.Globalization.CultureInfo.InvariantCulture);
                         }
                     }
                 }
             }
         }
 
-        private static void DecomposeProjectionMatrices(Dataset dataset, TimeSpan interval)
+        private static void DecomposeTransformationMatrices(Dataset dataset, TimeSpan interval)
         {
             DatasetFrame prev = null;
             foreach (var frame in dataset.Frames)
             {
-                // Emgu.CV doesn't support decomposeProjectionMatrix function, so 2nd opencv wrapper is used here as well
-                // We may decide to switch to OpenCvSharp only if it offers all required functions
-
-                double[,] projectionMatrix = new double[3, 4]; // Last row is skipped
-                for(int r = 0; r < 3; ++r)
+                var translation = new Emgu.CV.Image<Arthmetic, double>(1, 3);
+                for(int i = 0; i < 3; ++i)
                 {
-                    for(int c = 0; c < 4; ++c)
-                    {
-                        projectionMatrix[r, c] = frame.ProjectionMatrix[r, c].Intensity;
-                    }
+                    translation[i, 0] = frame.TransformationMatrix[i, 3];
                 }
 
-                OpenCvSharp.Cv2.DecomposeProjectionMatrix(projectionMatrix,
-                    out double[,] camera,
-                    out double[,] rotation,
-                    out double[] translation,
-                    out double[,] rx,
-                    out double[,] ry,
-                    out double[,] rz,
-                    out double[] eulerAngles
-                );
-
-                var emguTranslation = new Emgu.CV.Image<Gray, double>(3, 1);
-                var emguRotation = new Emgu.CV.Image<Gray, double>(3, 1);
-                for (int i = 0; i < 3; ++i)
-                {
-                    emguTranslation[0, i] = new Gray(translation[i] / translation[3]);
-                    emguRotation[0, i] = new Gray(eulerAngles[i]);
-                }
-
+                var rotationMatrix = frame.TransformationMatrix.GetSubRect(new Rectangle(0, 0, 3, 3));
+                var euler = RotationConverter.MatrixToEulerXYZ(rotationMatrix);
+                
                 OdometerFrame odometry = new OdometerFrame()
                 {
                     TimeDiff = interval,
-                    Translation = emguTranslation,
-                    Rotation = emguRotation,
+                    Translation = translation,
+                    Rotation = euler,
                     Velocity = null,
                     AngularVelocity = null,
                 };
@@ -142,8 +122,8 @@ namespace Egomotion
                 }
                 else
                 {
-                    odometry.TranslationDiff = new Emgu.CV.Image<Gray, double>(1, 3);
-                    odometry.RotationDiff = new Emgu.CV.Image<Gray, double>(1, 3);
+                    odometry.TranslationDiff = new Emgu.CV.Image<Arthmetic, double>(1, 3);
+                    odometry.RotationDiff = new Emgu.CV.Image<Arthmetic, double>(1, 3);
                 }
 
                 frame.Odometry = odometry;

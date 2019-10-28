@@ -133,18 +133,23 @@ namespace Egomotion
             }
         }
 
+        private double rad2deg(double rad)
+        {
+            return 180.0 * rad / Math.PI;
+        }
+
         private string FormatInfo(DatasetFrame frame)
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(string.Format("Frame {0}", currentFrame));
             sb.AppendLine("Translation:");
-            sb.AppendLine(string.Format("X: {0}", frame.Odometry.Translation[0, 0].Intensity.ToString("F4")));
-            sb.AppendLine(string.Format("Y: {0}", frame.Odometry.Translation[0, 1].Intensity.ToString("F4")));
-            sb.AppendLine(string.Format("Z: {0}", frame.Odometry.Translation[0, 2].Intensity.ToString("F4")));
+            sb.AppendLine(string.Format("X: {0}", frame.Odometry.Translation[0, 0].Value.ToString("F4")));
+            sb.AppendLine(string.Format("Y: {0}", frame.Odometry.Translation[1, 0].Value.ToString("F4")));
+            sb.AppendLine(string.Format("Z: {0}", frame.Odometry.Translation[2, 0].Value.ToString("F4")));
             sb.AppendLine("Rotation:");
-            sb.AppendLine(string.Format("X: {0}", frame.Odometry.Rotation[0, 0].Intensity.ToString("F4")));
-            sb.AppendLine(string.Format("Y: {0}", frame.Odometry.Rotation[0, 1].Intensity.ToString("F4")));
-            sb.AppendLine(string.Format("Z: {0}", frame.Odometry.Rotation[0, 2].Intensity.ToString("F4")));
+            sb.AppendLine(string.Format("X: {0}", rad2deg(frame.Odometry.Rotation[0, 0].Value).ToString("F4")));
+            sb.AppendLine(string.Format("Y: {0}", rad2deg(frame.Odometry.Rotation[1, 0].Value).ToString("F4")));
+            sb.AppendLine(string.Format("Z: {0}", rad2deg(frame.Odometry.Rotation[2, 0].Value).ToString("F4")));
             return sb.ToString();
         }
 

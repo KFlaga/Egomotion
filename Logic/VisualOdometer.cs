@@ -9,14 +9,14 @@ namespace Egomotion
     {
         public TimeSpan TimeDiff { get; set; }
 
-        public Image<Gray, double> Translation { get; set; } // 3-vector
-        public Image<Gray, double> TranslationDiff { get; set; } // 3-vector
+        public Image<Arthmetic, double> Translation { get; set; } // column 3-vector
+        public Image<Arthmetic, double> TranslationDiff { get; set; } // column 3-vector
 
-        public Image<Gray, double> Rotation { get; set; } // 3-vector - euler angles (xyz) in degrees
-        public Image<Gray, double> RotationDiff { get; set; } // 3-vector - euler angles (xyz) in degrees
+        public Image<Arthmetic, double> Rotation { get; set; } // column 3-vector - euler angles (xyz) in degrees
+        public Image<Arthmetic, double> RotationDiff { get; set; } // column 3-vector - euler angles (xyz) in degrees
 
-        public Image<Gray, double> Velocity { get; set; } // 3-vector
-        public Image<Gray, double> AngularVelocity { get; set; } // 3-vector
+        public Image<Arthmetic, double> Velocity { get; set; } // column 3-vector
+        public Image<Arthmetic, double> AngularVelocity { get; set; } // column 3-vector
     }
 
     public interface IVisualOdometer
