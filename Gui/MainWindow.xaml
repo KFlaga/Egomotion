@@ -14,13 +14,19 @@
                         <RowDefinition Height="100*"/>
                         <RowDefinition Height="100*"/>
                     </Grid.RowDefinitions>
-                    <local:ImageViewer Grid.Row="0" x:Name="imageViewer"/>
-                    <StackPanel Grid.Row="1">
-                        <Button Click="LoadImage">Load Image</Button>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100*"/>
+                        <ColumnDefinition Width="100*"/>
+                    </Grid.ColumnDefinitions>
+                    <local:ImageLoad Grid.Row="0" x:Name="imageLoad"/>
+                    <local:ImageLoad Grid.Row="0" Grid.Column="1"   x:Name="imageLoad2"/>
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
                         <Button Click="ProcessImage">Process Image</Button>
                         <local:AlgorithmParametersInput x:Name="parametersInput"/>
                     </StackPanel>
+
                 </Grid>
+                
             </ScrollViewer>
         </TabItem>
         <TabItem Header="Test Dataset">

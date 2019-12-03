@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Emgu.CV;
+using Emgu.CV.Structure;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -30,6 +32,7 @@ namespace Egomotion
             {
                 frames = value;
                 nextFrameTimer?.Stop();
+                rotation = frames[0].Odometry.RotationMatrix;
                 
                 Dispatcher.BeginInvoke((Action)(() =>
                 {
@@ -66,7 +69,7 @@ namespace Egomotion
             nextFrameTimer = new Timer()
             {
                 Interval = 20.0,
-                AutoReset = true
+                AutoReset = false
             };
             nextFrameTimer.Elapsed += NextFrameTimer_Elapsed;
             FramesPerSecond = 50;
@@ -106,7 +109,7 @@ namespace Egomotion
 
         private void UdpateFrame(int n)
         {
-            if(Frames == null || n >= Frames.Count || n < 0)
+            if(Frames == null || n >= Frames.Count - 1 || n < 0)
             {
                 nextFrameTimer.Stop();
                 return;
@@ -116,14 +119,43 @@ namespace Egomotion
             {
                 currentFrame = n;
                 var frame = frames[n];
-                videoViewer.Source = new BitmapImage(new Uri(frame.ImageFile, UriKind.Absolute));
-                recursive = true;
-                frameProgression.Value = n;
-                recursive = false;
-                frameCurrentLabel.Content = n;
-                info.Text = FormatInfo(frame);
+                var frame2 = frames[n + 1];
+
+                var mat = Emgu.CV.CvInvoke.Imread(frame.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
+                var mat2 = Emgu.CV.CvInvoke.Imread(frame2.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
+
+                var detector = new Emgu.CV.Features2D.ORBDetector();
+
+                OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, detector);
+                if (odometerFrame != null)
+                {
+
+                    rotation = odometerFrame.RotationMatrix.Multiply(rotation);
+                   // odometerFrame.Rotation = RotationConverter.MatrixToEulerXYZ(rotation);
+
+
+                    videoViewer.Source = new BitmapImage(new Uri(frame.ImageFile, UriKind.Absolute));
+                    recursive = true;
+                    frameProgression.Value = n;
+                    recursive = false;
+                    frameCurrentLabel.Content = n;
+                    infoReference.Text = FormatInfo(frame.Odometry);
+                    infoComputed.Text = FormatInfo(odometerFrame);
+
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine(string.Format("Frame {0}", currentFrame));
+                    sb.AppendLine(string.Format("X: {0}", odometerFrame.MatK[0, 0].Value.ToString("F4")));
+                    sb.AppendLine(string.Format("Y: {0}", odometerFrame.MatK[1, 1].Value.ToString("F4")));
+                    sb.AppendLine(string.Format("Z: {0}", odometerFrame.MatK[0, 2].Value.ToString("F4")));
+                    sb.AppendLine(string.Format("Z: {0}", odometerFrame.MatK[1, 2].Value.ToString("F4")));
+                    MatK.Text = sb.ToString();
+                }
+                nextFrameTimer.Start();
+
             }));
         }
+
+        public Image<Arthmetic, double> rotation;
 
         private void FrameProgression_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
@@ -138,19 +170,20 @@ namespace Egomotion
             return 180.0 * rad / Math.PI;
         }
 
-        private string FormatInfo(DatasetFrame frame)
+        private string FormatInfo(OdometerFrame frame)
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(string.Format("Frame {0}", currentFrame));
             sb.AppendLine("Translation:");
-            sb.AppendLine(string.Format("X: {0}", frame.Odometry.Translation[0, 0].Value.ToString("F4")));
-            sb.AppendLine(string.Format("Y: {0}", frame.Odometry.Translation[1, 0].Value.ToString("F4")));
-            sb.AppendLine(string.Format("Z: {0}", frame.Odometry.Translation[2, 0].Value.ToString("F4")));
+            sb.AppendLine(string.Format("X: {0}", frame.Translation[0, 0].Value.ToString("F4")));
+            sb.AppendLine(string.Format("Y: {0}", frame.Translation[1, 0].Value.ToString("F4")));
+            sb.AppendLine(string.Format("Z: {0}", frame.Translation[2, 0].Value.ToString("F4")));
             sb.AppendLine("Rotation:");
-            sb.AppendLine(string.Format("X: {0}", rad2deg(frame.Odometry.Rotation[0, 0].Value).ToString("F4")));
-            sb.AppendLine(string.Format("Y: {0}", rad2deg(frame.Odometry.Rotation[1, 0].Value).ToString("F4")));
-            sb.AppendLine(string.Format("Z: {0}", rad2deg(frame.Odometry.Rotation[2, 0].Value).ToString("F4")));
+            sb.AppendLine(string.Format("X: {0}", rad2deg(frame.Rotation[0, 0].Value).ToString("F4")));
+            sb.AppendLine(string.Format("Y: {0}", rad2deg(frame.Rotation[1, 0].Value).ToString("F4")));
+            sb.AppendLine(string.Format("Z: {0}", rad2deg(frame.Rotation[2, 0].Value).ToString("F4")));
             return sb.ToString();
+
         }
 
         private void FramePerSecSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

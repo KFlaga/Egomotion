@@ -63,9 +63,6 @@ namespace Egomotion
 
     public partial class MainWindow : Window
     {
-        Image<Bgr, byte> loadedImage;
-        Image<Bgr, byte> processedImage;
-
         public MainWindow()
         {
             InitializeComponent();
@@ -77,44 +74,50 @@ namespace Egomotion
             };
         }
 
-        private void LoadImage(object sender, RoutedEventArgs e)
-        {
-            loadedImage = ImageLoader.FromFile();
-            if (loadedImage != null)
-            {
-                imageViewer.Source = ImageLoader.ImageSourceForBitmap(loadedImage.Bitmap);
-            }
-        }
-
         private void ProcessImage(object sender, RoutedEventArgs e)
         {
-            if (loadedImage == null)
+            if (imageLoad.loadedImage == null)
             {
                 MessageBox.Show("Image needs to be loaded first");
                 return;
             }
 
-            processedImage = loadedImage.Clone();
-            
+            ProcessSIngleImage(imageLoad, out MKeyPoint[] kps1, out Mat desc1);
+            ProcessSIngleImage(imageLoad2, out MKeyPoint[] kps2, out Mat desc2);
+
+            Emgu.CV.Features2D.BFMatcher m = new Emgu.CV.Features2D.BFMatcher(Emgu.CV.Features2D.DistanceType.L2);
+            Emgu.CV.Util.VectorOfDMatch matches = new Emgu.CV.Util.VectorOfDMatch();
+            m.Match(desc1, desc2, matches);
+
+            Mat result = new Mat();
+            Emgu.CV.Util.VectorOfKeyPoint vectorOfKp1 = new Emgu.CV.Util.VectorOfKeyPoint(kps1);
+            Emgu.CV.Util.VectorOfKeyPoint vectorOfKp2 = new Emgu.CV.Util.VectorOfKeyPoint(kps2);
+            Emgu.CV.Util.VectorOfVectorOfDMatch matches2 = new Emgu.CV.Util.VectorOfVectorOfDMatch();
+            matches2.Push(matches);
+            Emgu.CV.Features2D.Features2DToolbox.DrawMatches(imageLoad.loadedImage, vectorOfKp1, imageLoad2.loadedImage, vectorOfKp2, matches2, result, new Bgr(Color.Red).MCvScalar, new Bgr(Color.Blue).MCvScalar);
+        
+            imageLoad2.Source = ImageLoader.ImageSourceForBitmap(result.Bitmap);
+
+            var F = FindTransformation.ComputeFundametnalMatrix(matches, kps1, kps2);
+            var K = FindTransformation.Optimal(F.Mat, imageLoad.loadedImage.Width, imageLoad.loadedImage.Height);
+            var E = K.T().Multiply(F).Multiply(K);
+            FindTransformation.ReturnRT(E, out Image<Arthmetic, double> R, out Image<Arthmetic, double> t);
+        }
+
+        private void ProcessSIngleImage(ImageLoad il, out MKeyPoint[] kps, out Mat descriptors)
+        {
             Emgu.CV.Features2D.Feature2D detector = (Emgu.CV.Features2D.Feature2D)Parameter.ValueFor("Feature Detector", parametersInput.Parameters, parametersInput.Values);
 
-            MKeyPoint[] kps = detector.Detect(loadedImage.Mat);
+            FindTransformation.FindFeatures(il.loadedImage.Mat, detector, out kps, out descriptors);
+            var processedImage = il.loadedImage.Clone();
 
             // TODO: open cv probably has some function to draw features automatically
-            foreach(var kp in kps)
+            foreach (var kp in kps)
             {
                 DrawCricle(processedImage, new Bgr(Color.Wheat), new System.Drawing.Point((int)kp.Point.X, (int)kp.Point.Y), new System.Drawing.Size(10, 10));
             }
-
-            Emgu.CV.Util.VectorOfKeyPoint vectorOfKp = new Emgu.CV.Util.VectorOfKeyPoint(kps);
-
-            var desc = new Emgu.CV.XFeatures2D.BriefDescriptorExtractor(32);
-            Mat descriptors = new Mat();
-            desc.Compute(loadedImage, vectorOfKp, descriptors);
-
-            imageViewer.Source = ImageLoader.ImageSourceForBitmap(processedImage.Bitmap);
+            il.Source = ImageLoader.ImageSourceForBitmap(processedImage.Bitmap);
         }
-
 
         private void DrawCricle(Image<Bgr, byte> image, Bgr color, System.Drawing.Point center, System.Drawing.Size size)
         {
@@ -142,5 +145,10 @@ namespace Egomotion
                 }
             });
         }
+
+
+
+
+
     }
 }

@@ -24,12 +24,27 @@
                 Background="White"
                 Opacity="0.8"
                 >
-            <TextBlock x:Name="info"
+            <StackPanel Orientation="Horizontal"
+                >
+                <TextBlock x:Name="infoReference"
                        Margin="3"
                        Opacity="2"
                        TextWrapping="NoWrap"
                        >
-            </TextBlock>
+                </TextBlock>
+                <TextBlock x:Name="infoComputed"
+                       Margin="3"
+                       Opacity="2"
+                       TextWrapping="NoWrap"
+                       >
+                </TextBlock>
+                <TextBlock x:Name="MatK"
+                       Margin="3"
+                       Opacity="2"
+                       TextWrapping="NoWrap"
+                       >
+                </TextBlock>
+            </StackPanel>
         </Border>
         <Border Grid.Row="1" BorderBrush="Black" BorderThickness="1">
             <StackPanel Orientation="Vertical">

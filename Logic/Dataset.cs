@@ -113,6 +113,7 @@ namespace Egomotion
                     Rotation = euler,
                     Velocity = null,
                     AngularVelocity = null,
+                    RotationMatrix = rotationMatrix
                 };
 
                 if(prev != null)

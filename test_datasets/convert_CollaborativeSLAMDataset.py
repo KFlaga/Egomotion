@@ -36,7 +36,7 @@ def create_directory(path):
 
 
 def main():
-    dirs = ["bathroom2study", "kitchen2study", "study2sittingroom", "turret2sittingroom"]
+    dirs = ["kitchen2study"]
     abs_dirs = [path.abspath(x) for x in dirs]
 
     for dir in abs_dirs:

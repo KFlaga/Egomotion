@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Egomotion
 {
-    public struct OdometerFrame
+    public class OdometerFrame
     {
         public TimeSpan TimeDiff { get; set; }
 
@@ -14,9 +14,13 @@ namespace Egomotion
 
         public Image<Arthmetic, double> Rotation { get; set; } // column 3-vector - euler angles (xyz) in degrees
         public Image<Arthmetic, double> RotationDiff { get; set; } // column 3-vector - euler angles (xyz) in degrees
+        public Image<Arthmetic, double> RotationMatrix { get; set; } // 
+
 
         public Image<Arthmetic, double> Velocity { get; set; } // column 3-vector
         public Image<Arthmetic, double> AngularVelocity { get; set; } // column 3-vector
+
+        public Image<Arthmetic, double> MatK { get; set; } // K
     }
 
     public interface IVisualOdometer
