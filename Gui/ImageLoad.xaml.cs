@@ -37,14 +37,11 @@ namespace Egomotion
 
         private void LoadImage(object sender, RoutedEventArgs e)
         {
-
             loadedImage = ImageLoader.FromFile();
             if (loadedImage != null)
             {
                 imageViewer.Source = ImageLoader.ImageSourceForBitmap(loadedImage.Bitmap);
             }
         }
-
-
     }
 }

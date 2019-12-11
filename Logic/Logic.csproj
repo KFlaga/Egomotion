@@ -69,13 +69,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArthmeticMatrix.cs" />
+    <Compile Include="ComputeMatrix.cs" />
     <Compile Include="Dataset.cs" />
+    <Compile Include="EstimateCameraFromImagePair.cs" />
+    <Compile Include="EstimateCameraFromImageSequence.cs" />
     <Compile Include="FileOp.cs" />
     <Compile Include="FindTransformation.cs" />
     <Compile Include="LoadImage.cs" />
     <Compile Include="LocalCorrespondencesOdometer.cs" />
+    <Compile Include="MatchImagePair.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RotationConverter.cs" />
+    <Compile Include="Svd.cs" />
     <Compile Include="VisualOdometer.cs" />
   </ItemGroup>
   <ItemGroup>

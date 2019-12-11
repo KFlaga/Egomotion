@@ -8,7 +8,7 @@ using Emgu.CV.Structure;
 
 namespace Egomotion
 {
-    public struct Arthmetic : Emgu.CV.IColor, IEquatable<Arthmetic>
+    public struct Arthmetic : IColor, IEquatable<Arthmetic>
     {
         public MCvScalar MCvScalar { get; set; }
         public double Value
@@ -47,6 +47,11 @@ namespace Egomotion
         public bool Equals(Arthmetic other)
         {
             return Value == other.Value;
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString();
         }
     }
 

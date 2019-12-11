@@ -73,14 +73,13 @@ namespace Egomotion
             for (int c = 0; c< countFrame; c++)
             {
                 int f = rand.Next(0, fr.Count - 1);
-                checkedFrames.Add(Emgu.CV.CvInvoke.Imread(fr[f].ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>().Mat);
-                checkedFrames.Add(Emgu.CV.CvInvoke.Imread(fr[f+1].ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>().Mat);
+                checkedFrames.Add(CvInvoke.Imread(fr[f].ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>().Mat);
+                checkedFrames.Add(CvInvoke.Imread(fr[f+1].ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>().Mat);
             }
 
             var detector = new Emgu.CV.Features2D.ORBDetector();
-
-
-            K = FindTransformation.ComputeK(checkedFrames, detector);
+            
+            K = EstimateCameraFromImageSequence.K(checkedFrames, detector);
 
         }
 
@@ -143,8 +142,8 @@ namespace Egomotion
                 var frame = frames[n];
                 var frame2 = frames[n + 1];
 
-                var mat = Emgu.CV.CvInvoke.Imread(frame.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
-                var mat2 = Emgu.CV.CvInvoke.Imread(frame2.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
+                var mat = CvInvoke.Imread(frame.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
+                var mat2 = CvInvoke.Imread(frame2.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
 
                 var detector = new Emgu.CV.Features2D.FastFeatureDetector(50, true);
 

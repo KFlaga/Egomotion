@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="640" Width="540">
     <TabControl>
-        <TabItem Header="Test Image">
+        <TabItem Header="Load Images">
             <ScrollViewer>
                 <Grid>
                     <Grid.RowDefinitions>
@@ -15,20 +15,17 @@
                         <RowDefinition Height="100*"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="88*"/>
-                        <ColumnDefinition Width="31*"/>
-                        <ColumnDefinition Width="138*"/>
-                        <ColumnDefinition Width="254*"/>
+                        <ColumnDefinition Width="50*"/>
+                        <ColumnDefinition Width="50*"/>
                     </Grid.ColumnDefinitions>
-                    <local:ImageLoad Grid.Row="0" x:Name="imageLoad" Grid.ColumnSpan="4" Margin="0,0,254.2,0.2" Loaded="imageLoad_Loaded"/>
-                    <local:ImageLoad Grid.Row="0" Grid.Column="3"   x:Name="imageLoad2" Margin="0.2,0,0.2,0.2"/>
-                    <StackPanel Grid.ColumnSpan="4" Margin="0,291,0.2,0.4" Grid.RowSpan="2">
+                    <local:ImageLoad Grid.Row="0" Grid.Column="0" x:Name="leftView"/>
+                    <local:ImageLoad Grid.Row="0" Grid.Column="1"   x:Name="rightView"/>
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
                         <Button Click="ProcessImage">Process Image</Button>
                         <local:AlgorithmParametersInput x:Name="parametersInput"/>
                     </StackPanel>
 
                 </Grid>
-
             </ScrollViewer>
         </TabItem>
         <TabItem Header="Test Dataset">

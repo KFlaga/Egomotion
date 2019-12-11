@@ -124,6 +124,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="MatchingWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AlgorithmParameterization\ParameterInput.xaml.cs">
@@ -132,6 +136,9 @@
     <Compile Include="AlgorithmParameterization\ParameterInputCreator.cs" />
     <Compile Include="AlgorithmParameterization\PickAlgorithmInput.xaml.cs">
       <DependentUpon>PickAlgorithmInput.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MatchingWindow.xaml.cs">
+      <DependentUpon>MatchingWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
