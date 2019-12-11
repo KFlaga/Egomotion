@@ -1,4 +1,5 @@
 ﻿using Emgu.CV;
+using Emgu.CV.Features2D;
 using Emgu.CV.Structure;
 using System;
 using System.Collections.Generic;
@@ -25,6 +26,7 @@ namespace Egomotion
         Timer nextFrameTimer = new Timer();
         int currentFrame = 0;
         Image<Arthmetic, double> K;
+        bool isRunning = false;
 
         public List<DatasetFrame> Frames
         {
@@ -33,10 +35,11 @@ namespace Egomotion
             {
                 frames = value;
                 nextFrameTimer?.Stop();
+
                 rotation = frames[0].Odometry.RotationMatrix;
                 translation = new Image<Arthmetic, double>(1,3);
 
-                Parameters(frames);
+                ComputeK(frames);
                 Dispatcher.BeginInvoke((Action)(() =>
                 {
                     frameProgression.Minimum = 0;
@@ -63,10 +66,13 @@ namespace Egomotion
                 }));
             }
         }
-        public void Parameters(List<DatasetFrame> fr)
+
+        public Feature2D Detector { get; set; }
+
+        public void ComputeK(List<DatasetFrame> fr)
         {
             Random rand = new Random();
-            int countFrame = (int)(fr.Count * 0.05);
+            int countFrame = Math.Min(50, (int)Math.Ceiling(fr.Count * 0.05));
 
             List < Mat > checkedFrames = new List<Mat>();
 
@@ -77,10 +83,7 @@ namespace Egomotion
                 checkedFrames.Add(CvInvoke.Imread(fr[f+1].ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>().Mat);
             }
 
-            var detector = new Emgu.CV.Features2D.ORBDetector();
-            
-            K = EstimateCameraFromImageSequence.K(checkedFrames, detector);
-
+            K = EstimateCameraFromImageSequence.K(checkedFrames, Detector);
         }
 
         public EgoPlayer()
@@ -89,23 +92,25 @@ namespace Egomotion
 
             nextFrameTimer = new Timer()
             {
-                Interval = 20.0,
+                Interval = 200.0,
                 AutoReset = false
             };
             nextFrameTimer.Elapsed += NextFrameTimer_Elapsed;
-            FramesPerSecond = 50;
+            FramesPerSecond = 5;
         }
 
         private void Start(object sender, RoutedEventArgs e)
         {
             if(Frames != null)
             {
+                isRunning = true;
                 nextFrameTimer.Start();
             }
         }
 
         private void Stop(object sender, RoutedEventArgs e)
         {
+            isRunning = false;
             nextFrameTimer.Stop();
         }
 
@@ -132,6 +137,7 @@ namespace Egomotion
         {
             if(Frames == null || n >= Frames.Count - 1 || n < 0)
             {
+                isRunning = false;
                 nextFrameTimer.Stop();
                 return;
             }
@@ -144,10 +150,8 @@ namespace Egomotion
 
                 var mat = CvInvoke.Imread(frame.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
                 var mat2 = CvInvoke.Imread(frame2.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
-
-                var detector = new Emgu.CV.Features2D.FastFeatureDetector(50, true);
-
-                OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, detector, K);
+                
+                OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, Detector, K);
                 if (odometerFrame != null)
                 {
 
@@ -156,8 +160,7 @@ namespace Egomotion
 
                     translation = translation + odometerFrame.Translation;
                     odometerFrame.Translation = translation;
-
-
+                    
                     videoViewer.Source = new BitmapImage(new Uri(frame.ImageFile, UriKind.Absolute));
                     recursive = true;
                     frameProgression.Value = n;
@@ -167,8 +170,7 @@ namespace Egomotion
                     OdometerFrame zeros = new OdometerFrame();
                     zeros.Translation = new Image<Arthmetic, double>(1, 3);
                     zeros.Rotation = new Image<Arthmetic, double>(1, 3);
-
-
+                    
                     infoComputed.Text = FormatInfo(odometerFrame, zeros);
 
                     StringBuilder sb = new StringBuilder();
@@ -179,8 +181,9 @@ namespace Egomotion
                     sb.AppendLine(string.Format("Z: {0}", odometerFrame.MatK[1, 2].Value.ToString("F4")));
                     MatK.Text = sb.ToString();
                 }
-                nextFrameTimer.Start();
 
+                if(isRunning)
+                    nextFrameTimer.Start();
             }));
         }
 

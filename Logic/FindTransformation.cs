@@ -33,7 +33,7 @@ namespace Egomotion
             odometerFrame.RotationMatrix = R;
             odometerFrame.MatK = K;
 
-            Image<Arthmetic, double> C = ComputeCameraCenter(R, odometerFrame.Translation, K, match);
+            Image<Arthmetic, double> C = ComputeCameraCenter(R, t, K, match);
             odometerFrame.Translation = R.Multiply(C);
             //   odometerFrame.Translation = R.T().Multiply(odometerFrame.Translation);
 

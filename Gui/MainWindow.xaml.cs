@@ -96,6 +96,9 @@ namespace Egomotion
                 try
                 {
                     dataset = Dataset.Load(dir, datasetInterval);
+
+                    Feature2D detector = (Feature2D)Parameter.ValueFor("Feature Detector", parametersInput.Parameters, parametersInput.Values);
+                    player.Detector = detector;
                     player.Frames = dataset.Frames;
                 }
                 catch(Exception ex)
