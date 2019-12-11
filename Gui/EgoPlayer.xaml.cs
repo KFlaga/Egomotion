@@ -24,6 +24,7 @@ namespace Egomotion
         int framesPerSecond;
         Timer nextFrameTimer = new Timer();
         int currentFrame = 0;
+        Image<Arthmetic, double> K;
 
         public List<DatasetFrame> Frames
         {
@@ -33,7 +34,9 @@ namespace Egomotion
                 frames = value;
                 nextFrameTimer?.Stop();
                 rotation = frames[0].Odometry.RotationMatrix;
-                
+                translation = new Image<Arthmetic, double>(1,3);
+
+                Parameters(frames);
                 Dispatcher.BeginInvoke((Action)(() =>
                 {
                     frameProgression.Minimum = 0;
@@ -60,7 +63,26 @@ namespace Egomotion
                 }));
             }
         }
+        public void Parameters(List<DatasetFrame> fr)
+        {
+            Random rand = new Random();
+            int countFrame = (int)(fr.Count * 0.05);
 
+            List < Mat > checkedFrames = new List<Mat>();
+
+            for (int c = 0; c< countFrame; c++)
+            {
+                int f = rand.Next(0, fr.Count - 1);
+                checkedFrames.Add(Emgu.CV.CvInvoke.Imread(fr[f].ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>().Mat);
+                checkedFrames.Add(Emgu.CV.CvInvoke.Imread(fr[f+1].ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>().Mat);
+            }
+
+            var detector = new Emgu.CV.Features2D.ORBDetector();
+
+
+            K = FindTransformation.ComputeK(checkedFrames, detector);
+
+        }
 
         public EgoPlayer()
         {
@@ -124,14 +146,17 @@ namespace Egomotion
                 var mat = Emgu.CV.CvInvoke.Imread(frame.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
                 var mat2 = Emgu.CV.CvInvoke.Imread(frame2.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
 
-                var detector = new Emgu.CV.Features2D.ORBDetector();
+                var detector = new Emgu.CV.Features2D.FastFeatureDetector(50, true);
 
-                OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, detector);
+                OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, detector, K);
                 if (odometerFrame != null)
                 {
 
                     rotation = odometerFrame.RotationMatrix.Multiply(rotation);
-                   // odometerFrame.Rotation = RotationConverter.MatrixToEulerXYZ(rotation);
+                    odometerFrame.Rotation = RotationConverter.MatrixToEulerXYZ(rotation);
+
+                    translation = translation + odometerFrame.Translation;
+                    odometerFrame.Translation = translation;
 
 
                     videoViewer.Source = new BitmapImage(new Uri(frame.ImageFile, UriKind.Absolute));
@@ -139,8 +164,13 @@ namespace Egomotion
                     frameProgression.Value = n;
                     recursive = false;
                     frameCurrentLabel.Content = n;
-                    infoReference.Text = FormatInfo(frame.Odometry);
-                    infoComputed.Text = FormatInfo(odometerFrame);
+                    infoReference.Text = FormatInfo(frame.Odometry, frames[0].Odometry);
+                    OdometerFrame zeros = new OdometerFrame();
+                    zeros.Translation = new Image<Arthmetic, double>(1, 3);
+                    zeros.Rotation = new Image<Arthmetic, double>(1, 3);
+
+
+                    infoComputed.Text = FormatInfo(odometerFrame, zeros);
 
                     StringBuilder sb = new StringBuilder();
                     sb.AppendLine(string.Format("Frame {0}", currentFrame));
@@ -156,6 +186,8 @@ namespace Egomotion
         }
 
         public Image<Arthmetic, double> rotation;
+        public Image<Arthmetic, double> translation;
+
 
         private void FrameProgression_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
@@ -170,18 +202,18 @@ namespace Egomotion
             return 180.0 * rad / Math.PI;
         }
 
-        private string FormatInfo(OdometerFrame frame)
+        private string FormatInfo(OdometerFrame frame, OdometerFrame first)
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(string.Format("Frame {0}", currentFrame));
             sb.AppendLine("Translation:");
-            sb.AppendLine(string.Format("X: {0}", frame.Translation[0, 0].Value.ToString("F4")));
-            sb.AppendLine(string.Format("Y: {0}", frame.Translation[1, 0].Value.ToString("F4")));
-            sb.AppendLine(string.Format("Z: {0}", frame.Translation[2, 0].Value.ToString("F4")));
+            sb.AppendLine(string.Format("X: {0}", (frame.Translation[0, 0] - first.Translation[0,0]).ToString("F4")));
+            sb.AppendLine(string.Format("Y: {0}", (frame.Translation[1, 0] - first.Translation[1, 0]).ToString("F4")));
+            sb.AppendLine(string.Format("Z: {0}", (frame.Translation[2, 0] - first.Translation[2, 0]).ToString("F4")));
             sb.AppendLine("Rotation:");
-            sb.AppendLine(string.Format("X: {0}", rad2deg(frame.Rotation[0, 0].Value).ToString("F4")));
-            sb.AppendLine(string.Format("Y: {0}", rad2deg(frame.Rotation[1, 0].Value).ToString("F4")));
-            sb.AppendLine(string.Format("Z: {0}", rad2deg(frame.Rotation[2, 0].Value).ToString("F4")));
+            sb.AppendLine(string.Format("X: {0}", rad2deg((frame.Rotation[0, 0] )).ToString("F4")));
+            sb.AppendLine(string.Format("Y: {0}", rad2deg((frame.Rotation[1, 0] )).ToString("F4")));
+            sb.AppendLine(string.Format("Z: {0}", rad2deg((frame.Rotation[2, 0] )).ToString("F4")));
             return sb.ToString();
 
         }

@@ -15,18 +15,20 @@
                         <RowDefinition Height="100*"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="100*"/>
-                        <ColumnDefinition Width="100*"/>
+                        <ColumnDefinition Width="88*"/>
+                        <ColumnDefinition Width="31*"/>
+                        <ColumnDefinition Width="138*"/>
+                        <ColumnDefinition Width="254*"/>
                     </Grid.ColumnDefinitions>
-                    <local:ImageLoad Grid.Row="0" x:Name="imageLoad"/>
-                    <local:ImageLoad Grid.Row="0" Grid.Column="1"   x:Name="imageLoad2"/>
-                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
+                    <local:ImageLoad Grid.Row="0" x:Name="imageLoad" Grid.ColumnSpan="4" Margin="0,0,254.2,0.2" Loaded="imageLoad_Loaded"/>
+                    <local:ImageLoad Grid.Row="0" Grid.Column="3"   x:Name="imageLoad2" Margin="0.2,0,0.2,0.2"/>
+                    <StackPanel Grid.ColumnSpan="4" Margin="0,291,0.2,0.4" Grid.RowSpan="2">
                         <Button Click="ProcessImage">Process Image</Button>
                         <local:AlgorithmParametersInput x:Name="parametersInput"/>
                     </StackPanel>
 
                 </Grid>
-                
+
             </ScrollViewer>
         </TabItem>
         <TabItem Header="Test Dataset">
@@ -34,12 +36,19 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="100*"/>
+                        <RowDefinition Height="10*"/>
                         <RowDefinition Height="100*"/>
                     </Grid.RowDefinitions>
-                    <local:EgoPlayer x:Name="player"/>
-                    <StackPanel Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50*"/>
+                        <ColumnDefinition Width="50*"/>
+                    </Grid.ColumnDefinitions>
+                    <local:EgoPlayer x:Name="player" Grid.ColumnSpan="2"/>
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
                         <Button Click="LoadDataset">Load Dataset</Button>
                     </StackPanel>
+                    <local:ImageViewer Grid.Row="2"  x:Name="frameLoad1" Grid.ColumnSpan="2" Margin="0,0,254.2,0.2" />
+                    <local:ImageViewer Grid.Row="2" Grid.Column="1" x:Name="frameLoad2" Margin="0,0.2,0.2,0.2" />
                 </Grid>
             </ScrollViewer>
         </TabItem>

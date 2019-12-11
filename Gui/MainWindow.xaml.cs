@@ -98,7 +98,8 @@ namespace Egomotion
         
             imageLoad2.Source = ImageLoader.ImageSourceForBitmap(result.Bitmap);
 
-            var F = FindTransformation.ComputeFundametnalMatrix(matches, kps1, kps2);
+            FindTransformation.FindMatches(matches, kps1, kps2, out Emgu.CV.Util.VectorOfPointF point1, out Emgu.CV.Util.VectorOfPointF point2);
+            var F = FindTransformation.ComputeFundametnalMatrix(point1, point2);
             var K = FindTransformation.Optimal(F.Mat, imageLoad.loadedImage.Width, imageLoad.loadedImage.Height);
             var E = K.T().Multiply(F).Multiply(K);
             FindTransformation.ReturnRT(E, out Image<Arthmetic, double> R, out Image<Arthmetic, double> t);
@@ -146,9 +147,9 @@ namespace Egomotion
             });
         }
 
+        private void imageLoad_Loaded(object sender, RoutedEventArgs e)
+        {
 
-
-
-
+        }
     }
 }
