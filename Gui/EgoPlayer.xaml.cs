@@ -67,12 +67,14 @@ namespace Egomotion
             }
         }
 
-        public Feature2D Detector { get; set; }
+        public Feature2D Detector { get; set; } = new FastFeatureDetector(20, true);
+        public double TakeBest { get; set; } = 50.0;
+        public int MaxPairsForK { get; set; } = 50;
 
         public void ComputeK(List<DatasetFrame> fr)
         {
             Random rand = new Random();
-            int countFrame = Math.Min(50, (int)Math.Ceiling(fr.Count * 0.05));
+            int countFrame = Math.Min(MaxPairsForK, (int)Math.Ceiling(fr.Count * 0.1));
 
             List < Mat > checkedFrames = new List<Mat>();
 

@@ -19,31 +19,28 @@ namespace Egomotion
             InitializeComponent();
         }
 
-        public void ProcessImages(Mat left, Mat right, Feature2D detector)
+        public void ProcessImages(Mat left, Mat right, Feature2D detector, double takeBest)
         {
-            if (left == null)
-            {
-                MessageBox.Show("Image needs to be loaded first");
-                return;
-            }
-
             var match = MatchImagePair.Match(left, right, detector);
-            DrawFeatures(left, right, match);
+            DrawFeatures(left, right, match, takeBest);
 
-            var F = ComputeMatrix.F(match.LeftPoints, match.RightPoints);
+            var lps = match.LeftPoints.ToArray().Take((int)(match.LeftPoints.Size * takeBest)).ToArray();
+            var rps = match.RightPoints.ToArray().Take((int)(match.RightPoints.Size * takeBest)).ToArray();
+
+            var F = ComputeMatrix.F(new VectorOfPointF(lps), new VectorOfPointF(rps));
             var K = EstimateCameraFromImagePair.K(F, left.Width, right.Height);
             var E = ComputeMatrix.E(F, K);
             FindTransformation.DecomposeToRT(E, out Image<Arthmetic, double> R, out Image<Arthmetic, double> t);
             PrintMatricesInfo(E, K, R, t);
         }
 
-        private void DrawFeatures(Mat left, Mat right, MacthingResult match)
+        private void DrawFeatures(Mat left, Mat right, MacthingResult match, double takeBest)
         {
             Mat matchesImage = new Mat();
             VectorOfVectorOfDMatch matches2 = new VectorOfVectorOfDMatch();
             VectorOfKeyPoint vectorOfKp1 = new VectorOfKeyPoint(match.LeftKps);
             VectorOfKeyPoint vectorOfKp2 = new VectorOfKeyPoint(match.RightKps);
-            matches2.Push(match.Matches);
+            matches2.Push(new VectorOfDMatch(match.Matches.ToArray().OrderBy((x) => x.Distance).Take((int)(match.Matches.Size * takeBest)).ToArray()));
             Features2DToolbox.DrawMatches(left, vectorOfKp1, right, vectorOfKp2, matches2, matchesImage, new Bgr(Color.Red).MCvScalar, new Bgr(Color.Blue).MCvScalar);
 
             macthedView.Source = ImageLoader.ImageSourceForBitmap(matchesImage.Bitmap);

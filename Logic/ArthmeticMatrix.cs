@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -61,12 +62,12 @@ namespace Egomotion
         {
             Image<Arthmetic, double> res = new Image<Arthmetic, double>(b.Cols, a.Rows);
 
-            for(int r = 0; r < a.Rows; ++r)
+            for (int r = 0; r < a.Rows; ++r)
             {
-                for(int c = 0; c < b.Cols; ++c)
+                for (int c = 0; c < b.Cols; ++c)
                 {
                     double x = 0.0;
-                    for(int i = 0; i < a.Cols; ++i)
+                    for (int i = 0; i < a.Cols; ++i)
                     {
                         x += a[r, i] * b[i, c];
                     }
@@ -76,7 +77,7 @@ namespace Egomotion
 
             return res;
         }
-        
+
         public static Image<Arthmetic, double> Multiply(this Mat a, Image<Arthmetic, double> b)
         {
             return a.ToImage<Arthmetic, double>().Multiply(b);
@@ -107,6 +108,21 @@ namespace Egomotion
         public static Image<Arthmetic, double> T(this Image<Arthmetic, double> m)
         {
             return m.Mat.T().ToImage<Arthmetic, double>();
+        }
+
+        public static Image<Arthmetic, double> ToVector(this PointF p)
+        {
+            Image<Arthmetic, double> P = new Image<Arthmetic, double>(new double[,,] {
+                { {p.X}} ,
+                { {p.Y}} ,
+                { {1}} ,
+            });
+            return P;
+        }
+
+        public static PointF ToPointF(this Image<Arthmetic, double> p)
+        {
+            return new PointF((float)(p[0, 0] / p[2, 0]), (float)(p[1, 0] / p[2, 0]));
         }
     }
 }

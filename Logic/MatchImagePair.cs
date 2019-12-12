@@ -15,6 +15,7 @@ namespace Egomotion
     {
         public VectorOfPointF LeftPoints { get; set; }
         public VectorOfPointF RightPoints { get; set; }
+        public List<double> Distances { get; set; }
 
         public MKeyPoint[] LeftKps { get; set; }
         public MKeyPoint[] RightKps { get; set; }
@@ -42,15 +43,19 @@ namespace Egomotion
             return matches;
         }
 
-        public static void MacthesToPointLists(VectorOfDMatch macthes, MKeyPoint[] kp1, MKeyPoint[] kp2, out VectorOfPointF leftPoints, out VectorOfPointF rightPoints)
+        public static void MacthesToPointLists(VectorOfDMatch matches, MKeyPoint[] kp1, MKeyPoint[] kp2,
+            out VectorOfPointF leftPoints, out VectorOfPointF rightPoints, out List<double> distances)
         {
             leftPoints = new VectorOfPointF();
             rightPoints = new VectorOfPointF();
+            distances = new List<double>();
 
-            for (int j = 0; j < macthes.Size; j++)
+            var sortedMatches = matches.ToArray().OrderBy((x) => x.Distance);
+            foreach(var m in sortedMatches)
             {
-                leftPoints.Push(new PointF[] { kp1[macthes[j].QueryIdx].Point });
-                rightPoints.Push(new PointF[] { kp2[macthes[j].TrainIdx].Point });
+                leftPoints.Push(new PointF[] { kp1[m.QueryIdx].Point });
+                rightPoints.Push(new PointF[] { kp2[m.TrainIdx].Point });
+                distances.Add(m.Distance);
             }
         }
 
@@ -61,7 +66,7 @@ namespace Egomotion
 
             var matches = FindMatches(desc1, desc2);
 
-            MacthesToPointLists(matches, kps1, kps2, out VectorOfPointF leftPoints, out VectorOfPointF rightPoints);
+            MacthesToPointLists(matches, kps1, kps2, out VectorOfPointF leftPoints, out VectorOfPointF rightPoints, out List<double> distances);
 
             return new MacthingResult()
             {
@@ -69,7 +74,8 @@ namespace Egomotion
                 RightPoints = rightPoints,
                 LeftKps = kps1,
                 RightKps = kps2,
-                Matches = matches
+                Matches = matches,
+                Distances = distances
             };
         }
     }

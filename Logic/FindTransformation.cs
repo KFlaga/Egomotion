@@ -15,10 +15,14 @@ namespace Egomotion
 {
     public class FindTransformation
     {
-        public static OdometerFrame GetOdometerFrame(Mat left, Mat right, Emgu.CV.Features2D.Feature2D detector, Image<Arthmetic, double> K)
+        public static OdometerFrame GetOdometerFrame(Mat left, Mat right, Emgu.CV.Features2D.Feature2D detector, Image<Arthmetic, double> K, double takeBest = 1.0)
         {
             var match = MatchImagePair.Match(left, right, detector);
-            var F = ComputeMatrix.F(match.LeftPoints, match.RightPoints);
+
+            var lps = match.LeftPoints.ToArray().Take((int)(match.LeftPoints.Size * takeBest)).ToArray();
+            var rps = match.RightPoints.ToArray().Take((int)(match.RightPoints.Size * takeBest)).ToArray();
+
+            var F = ComputeMatrix.F(new VectorOfPointF(lps), new VectorOfPointF(rps));
             if (F == null)
             {
                 return null;
@@ -73,35 +77,47 @@ namespace Egomotion
             t = svd.U.Multiply(Z).Multiply(svd.U.T());
         }
 
-        public static Image<Arthmetic, double> ComputeCameraCenter(Image<Arthmetic, double> R, Image<Arthmetic, double> T, Image<Arthmetic, double> K, MacthingResult match)
+        public static Image<Arthmetic, double> ComputeCameraCenter(Image<Arthmetic, double> R, Image<Arthmetic, double> T, Image<Arthmetic, double> K, MacthingResult match, double takeBest = 0.25)
         {
-            var pi1 = match.LeftPoints[0];
-            var pi2 = match.RightPoints[0];
-
-            Image<Arthmetic, double> p1 = new Image<Arthmetic, double>(new double[,,] {
-                { {pi1.X}} ,
-                { {pi1.Y}} ,
-                { {1}} ,
-            });
-            Image<Arthmetic, double> p2 = new Image<Arthmetic, double>(new double[,,] {
-                { {pi2.X}} ,
-                { {pi2.Y}} ,
-                { {1}} ,
-            });
-
             Image<Arthmetic, double> Kinv = new Image<Arthmetic, double>(3, 3);
             CvInvoke.Invert(K, Kinv, Emgu.CV.CvEnum.DecompMethod.LU);
 
-            Image<Arthmetic, double> P1 = Kinv.Multiply(p1);
-            Image<Arthmetic, double> P2 = Kinv.Multiply(p2);
-
             Image<Arthmetic, double> C = R.T().Multiply(T);
 
+            if(Math.Abs(C[2, 0]) < 1e-8)
+            {
+                // TODO: alternative for such case
+                throw new NotImplementedException("Initial camera center has zero Z");
+            }
+            
             double alfa = C[0, 0] / C[2, 0];
             double beta = C[1, 0] / C[2, 0];
+            
+            var lps = match.LeftPoints.ToArray().Take((int)(match.LeftPoints.Size * takeBest)).ToArray();
+            var rps = match.RightPoints.ToArray().Take((int)(match.RightPoints.Size * takeBest)).ToArray();
 
-            double cz = (R[0, 0] * P1[0, 0] + R[0, 1] * P1[1, 0] + R[0, 2] * P1[2, 0] - P2[0, 0]) / (R[0, 0] * alfa + R[0, 1] * beta + R[0, 2]);
+            double[] czs = new double[lps.Length];
 
+            for (int i = 0; i < lps.Length; ++i)
+            {
+                Image<Arthmetic, double> p1 = match.LeftPoints[i].ToVector();
+                Image<Arthmetic, double> p2 = match.RightPoints[i].ToVector();
+
+                Image<Arthmetic, double> P1 = Kinv.Multiply(p1);
+                Image<Arthmetic, double> P2 = Kinv.Multiply(p2);
+
+                double czX = (R[0, 0] * P1[0, 0] + R[0, 1] * P1[1, 0] + R[0, 2] * P1[2, 0] - P2[0, 0]) / 
+                                          (R[0, 0] * alfa + R[0, 1] * beta + R[0, 2]);
+                double czY = (R[1, 0] * P1[0, 0] + R[1, 1] * P1[1, 0] + R[1, 2] * P1[2, 0] - P2[1, 0]) /
+                                          (R[1, 0] * alfa + R[1, 1] * beta + R[1, 2]);
+                double czZ = (R[2, 0] * P1[0, 0] + R[2, 1] * P1[1, 0] + R[2, 2] * P1[2, 0] - P2[2, 0]) /
+                                          (R[2, 0] * alfa + R[2, 1] * beta + R[2, 2]);
+
+                czs[i] = (czX + czY + czZ) / 3;
+            }
+
+            double cz = czs.Aggregate((a, b) => a + b) / czs.Length;
+            
             C[0, 0] = cz * alfa;
             C[1, 0] = cz * beta;
             C[2, 0] = cz;

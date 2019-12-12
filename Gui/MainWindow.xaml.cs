@@ -68,9 +68,15 @@ namespace Egomotion
 
             parametersInput.Parameters = new List<Parameter>()
             {
+                new Parameter("Take % of best features", typeof(float), 50.0f),
+                new Parameter("Max image pairs for K", typeof(float), 50),
                 new Parameter("Feature Detector", typeof(PickFeatureDetector), null),
             };
         }
+
+        Feature2D Detector => (Feature2D)Parameter.ValueFor("Feature Detector", parametersInput.Parameters, parametersInput.Values);
+        double TakeBest => ((float)Parameter.ValueFor("Take % of best features", parametersInput.Parameters, parametersInput.Values)) / 100.0;
+        int MaxPairsForK => ((int)Parameter.ValueFor("Max image pairs for K", parametersInput.Parameters, parametersInput.Values));
 
         private void ProcessImage(object sender, RoutedEventArgs e)
         {
@@ -79,11 +85,10 @@ namespace Egomotion
                 MessageBox.Show("Image needs to be loaded first");
                 return;
             }
-
-            Feature2D detector = (Feature2D)Parameter.ValueFor("Feature Detector", parametersInput.Parameters, parametersInput.Values);
+            
             MatchingWindow matchingWindow = new MatchingWindow();
             matchingWindow.Show();
-            matchingWindow.ProcessImages(leftView.loadedImage.Mat, rightView.loadedImage.Mat, detector);
+            matchingWindow.ProcessImages(leftView.loadedImage.Mat, rightView.loadedImage.Mat, Detector, TakeBest);
         }
         
         Dataset dataset;
@@ -96,9 +101,9 @@ namespace Egomotion
                 try
                 {
                     dataset = Dataset.Load(dir, datasetInterval);
-
-                    Feature2D detector = (Feature2D)Parameter.ValueFor("Feature Detector", parametersInput.Parameters, parametersInput.Values);
-                    player.Detector = detector;
+                    
+                    player.Detector = Detector;
+                    player.TakeBest = TakeBest;
                     player.Frames = dataset.Frames;
                 }
                 catch(Exception ex)
