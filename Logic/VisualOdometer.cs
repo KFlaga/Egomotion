@@ -11,6 +11,7 @@ namespace Egomotion
 
         public Image<Arthmetic, double> Translation { get; set; } // column 3-vector
         public Image<Arthmetic, double> TranslationDiff { get; set; } // column 3-vector
+        public Image<Arthmetic, double> Center { get; set; } // column 3-vector
 
         public Image<Arthmetic, double> Rotation { get; set; } // column 3-vector - euler angles (xyz) in degrees
         public Image<Arthmetic, double> RotationDiff { get; set; } // column 3-vector - euler angles (xyz) in degrees
@@ -21,6 +22,8 @@ namespace Egomotion
         public Image<Arthmetic, double> AngularVelocity { get; set; } // column 3-vector
 
         public Image<Arthmetic, double> MatK { get; set; } // K
+
+        public MacthingResult Match { get; set; }
     }
 
     public interface IVisualOdometer

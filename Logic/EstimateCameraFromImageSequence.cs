@@ -1,4 +1,5 @@
 ﻿using Emgu.CV;
+using Emgu.CV.Features2D;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
 using MathNet.Numerics.Optimization;
@@ -12,12 +13,12 @@ namespace Egomotion
 {
     public class EstimateCameraFromImageSequence
     {
-        public static Image<Arthmetic, double> K(List<Mat> mats, Emgu.CV.Features2D.Feature2D detector)
+        public static Image<Arthmetic, double> K(List<Mat> mats, Feature2D detector, Feature2D descriptor, DistanceType distanceType, double maxDistance)
         {
             List<Image<Arthmetic, double>> Fs = new List<Image<Arthmetic, double>>();
             for (int i = 0; i < mats.Count - 1; i += 2)
             {
-                var match = MatchImagePair.Match(mats[i], mats[i + 1], detector);
+                var match = MatchImagePair.Match(mats[i], mats[i + 1], detector, descriptor, distanceType, maxDistance);
                 var F = ComputeMatrix.F(match.LeftPoints, match.RightPoints);
                 if (F == null)
                 {

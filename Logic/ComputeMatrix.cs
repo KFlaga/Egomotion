@@ -1,4 +1,5 @@
 ﻿using Emgu.CV;
+using Emgu.CV.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,8 +10,13 @@ namespace Egomotion
 {
     public class ComputeMatrix
     {
-        public static Image<Arthmetic, double> F(IInputArray leftPoints, IInputArray rightPoints)
+        public static Image<Arthmetic, double> F(VectorOfPointF leftPoints, VectorOfPointF rightPoints)
         {
+            if(leftPoints.Size < 8 || rightPoints.Size < 8)
+            {
+                return null;
+            }
+
             Mat F = CvInvoke.FindFundamentalMat(leftPoints, rightPoints);
             if (F.Rows == 0)
             {

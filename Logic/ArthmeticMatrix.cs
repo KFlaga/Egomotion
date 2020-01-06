@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Emgu.CV;
 using Emgu.CV.Structure;
+using Emgu.CV.Util;
 
 namespace Egomotion
 {
@@ -123,6 +124,15 @@ namespace Egomotion
         public static PointF ToPointF(this Image<Arthmetic, double> p)
         {
             return new PointF((float)(p[0, 0] / p[2, 0]), (float)(p[1, 0] / p[2, 0]));
+        }
+
+        public static List<PointF> ToList(this VectorOfPointF v, int take = -1)
+        {
+            int size = take > 0 ? Math.Min(take, v.Size) : v.Size;
+            List<PointF> r = new List<PointF>(size);
+            for (int i = 0; i < size; ++i)
+                r.Add(v[i]);
+            return r;
         }
     }
 }

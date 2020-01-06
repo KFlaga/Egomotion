@@ -79,6 +79,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="EgoPlayer3.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="EgoPlayer.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -103,6 +107,9 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="EgoPlayer3.xaml.cs">
+      <DependentUpon>EgoPlayer3.xaml</DependentUpon>
+    </Compile>
     <Compile Include="EgoPlayer.xaml.cs">
       <DependentUpon>EgoPlayer.xaml</DependentUpon>
     </Compile>
@@ -124,6 +131,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="TripletMatchingWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="MatchingWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -136,6 +147,10 @@
     <Compile Include="AlgorithmParameterization\ParameterInputCreator.cs" />
     <Compile Include="AlgorithmParameterization\PickAlgorithmInput.xaml.cs">
       <DependentUpon>PickAlgorithmInput.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MatchDrawer.cs" />
+    <Compile Include="TripletMatchingWindow.xaml.cs">
+      <DependentUpon>TripletMatchingWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="MatchingWindow.xaml.cs">
       <DependentUpon>MatchingWindow.xaml</DependentUpon>

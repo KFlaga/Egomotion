@@ -19,7 +19,7 @@ using System.Windows.Shapes;
 
 namespace Egomotion
 {
-    public partial class EgoPlayer : UserControl
+    public partial class EgoPlayer3 : UserControl
     {
         List<DatasetFrame> frames;
         int framesPerSecond;
@@ -97,7 +97,7 @@ namespace Egomotion
             K = EstimateCameraFromImageSequence.K(checkedFrames, Detector, Descriptor, DistanceType, maxDistance);
         }
 
-        public EgoPlayer()
+        public EgoPlayer3()
         {
             InitializeComponent();
 
@@ -139,14 +139,16 @@ namespace Egomotion
 
         private void NextFrameTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            UdpateFrame(currentFrame + Step);
+            UdpateFrame(currentFrame + 1);
         }
 
         bool recursive = false;
 
+        double lastScale = 1.0;
+
         private void UdpateFrame(int n)
         {
-            if(Frames == null || n >= Frames.Count - Step || n < 0)
+            if(Frames == null || n >= Frames.Count - 2 || n < 0)
             {
                 isRunning = false;
                 nextFrameTimer.Stop();
@@ -157,15 +159,19 @@ namespace Egomotion
             {
                 currentFrame = n;
                 var frame = frames[n];
-                var frame2 = frames[n + Step];
+                var frame2 = frames[n + 1];
+                var frame3 = frames[n + 2];
 
                 var mat = CvInvoke.Imread(frame.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
                 var mat2 = CvInvoke.Imread(frame2.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
+                var mat3 = CvInvoke.Imread(frame2.ImageFile, Emgu.CV.CvEnum.ImreadModes.Color).ToImage<Bgr, byte>();
 
-                try
-                {
+           //     try
+           //     {
                     double maxDistance = 20.0;
-                    OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, Detector, Descriptor, DistanceType, maxDistance, K);
+                    OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame3(mat.Mat, mat2.Mat, mat3.Mat, 
+                        lastScale, out double thisScale,
+                        Detector, Descriptor, DistanceType, maxDistance, K);
                     if (odometerFrame != null)
                     {
                         videoViewer.Source = new BitmapImage(new Uri(frame.ImageFile, UriKind.Absolute));
@@ -188,17 +194,19 @@ namespace Egomotion
 
                         infoReference.Text = FormatInfo(refTranslation, refRotationEuler, "Ref Cumulative");
                         infoReferenceDiff.Text = FormatInfo(refTranslationDiff, refRotationDiffEuler, "Ref Diff");
-                        infoComputed.Text = FormatInfo(odometerFrame.Translation, odometerFrame.Rotation, "Comp Diff");
+                        infoComputed.Text = FormatInfo(odometerFrame.Center, odometerFrame.Rotation, "Comp Diff");
                         infoComputedCumulative.Text = FormatInfo(totalTranslation, rotationEuler, "Comp Cumulative");
                         infoK.Text = FormatInfoK(odometerFrame);
 
                         MatchDrawer.DrawFeatures(mat.Mat, mat2.Mat, odometerFrame.Match, TakeBest, matchedView);
+
+                        lastScale = thisScale * lastScale;
                     }
-                }
-                catch(Exception e)
-                {
-                    infoComputed.Text = "Error!";
-                }
+           //     }
+           //     catch(Exception e)
+          //      {
+          //          infoComputed.Text = "Error!";
+           //     }
 
                 if(isRunning)
                     nextFrameTimer.Start();

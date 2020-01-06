@@ -24,33 +24,28 @@ namespace Egomotion
 
     public static class MatchImagePair
     {
-        public static void FindFeatures(Mat image, Feature2D detector, out MKeyPoint[] kps, out Mat descriptors)
+        public static void FindFeatures(Mat image, Feature2D detector, Feature2D descriptor, out MKeyPoint[] kps, out Mat descriptors)
         {
             kps = detector.Detect(image);
-
             VectorOfKeyPoint vectorOfKp = new VectorOfKeyPoint(kps);
-
-            var desc = new Emgu.CV.XFeatures2D.BriefDescriptorExtractor(32);
             descriptors = new Mat();
-            desc.Compute(image, vectorOfKp, descriptors);
+            descriptor.Compute(image, vectorOfKp, descriptors);
+            kps = vectorOfKp.ToArray();
         }
 
-        public static VectorOfDMatch FindMatches(Mat desc1, Mat desc2)
+        public static VectorOfDMatch FindMatches(MKeyPoint[]  kps1, MKeyPoint[] kps2, Mat desc1, Mat desc2, DistanceType distanceType, double maxDistance)
         {
-            BFMatcher m = new BFMatcher(DistanceType.Hamming, true);
-            VectorOfDMatch matches = new VectorOfDMatch();
-            m.Match(desc1, desc2, matches);
-            return matches;
+            var res = MatchClosePoints.Match(kps1, kps2, desc1, desc2, distanceType, maxDistance);
+            return new VectorOfDMatch(res.ToArray());
         }
 
-        public static void MacthesToPointLists(VectorOfDMatch matches, MKeyPoint[] kp1, MKeyPoint[] kp2,
+        public static void MacthesToPointLists(IEnumerable<MDMatch> sortedMatches, MKeyPoint[] kp1, MKeyPoint[] kp2,
             out VectorOfPointF leftPoints, out VectorOfPointF rightPoints, out List<double> distances)
         {
             leftPoints = new VectorOfPointF();
             rightPoints = new VectorOfPointF();
             distances = new List<double>();
 
-            var sortedMatches = matches.ToArray().OrderBy((x) => x.Distance);
             foreach(var m in sortedMatches)
             {
                 leftPoints.Push(new PointF[] { kp1[m.QueryIdx].Point });
@@ -59,14 +54,15 @@ namespace Egomotion
             }
         }
 
-        public static MacthingResult Match(Mat left, Mat right, Feature2D detector)
+        public static MacthingResult Match(Mat left, Mat right, Feature2D detector, Feature2D descriptor, DistanceType distanceType, double maxDistance)
         {
-            FindFeatures(left, detector, out MKeyPoint[] kps1, out Mat desc1);
-            FindFeatures(right, detector, out MKeyPoint[] kps2, out Mat desc2);
+            FindFeatures(left, detector, descriptor, out MKeyPoint[] kps1, out Mat desc1);
+            FindFeatures(right, detector, descriptor, out MKeyPoint[] kps2, out Mat desc2);
 
-            var matches = FindMatches(desc1, desc2);
+            var matches = FindMatches(kps1, kps2, desc1, desc2, distanceType, maxDistance);
 
-            MacthesToPointLists(matches, kps1, kps2, out VectorOfPointF leftPoints, out VectorOfPointF rightPoints, out List<double> distances);
+            var sortedMatches = matches.ToArray().OrderBy((x) => x.Distance);
+            MacthesToPointLists(sortedMatches, kps1, kps2, out VectorOfPointF leftPoints, out VectorOfPointF rightPoints, out List<double> distances);
 
             return new MacthingResult()
             {
@@ -74,7 +70,7 @@ namespace Egomotion
                 RightPoints = rightPoints,
                 LeftKps = kps1,
                 RightKps = kps2,
-                Matches = matches,
+                Matches = new VectorOfDMatch(sortedMatches.ToArray()),
                 Distances = distances
             };
         }

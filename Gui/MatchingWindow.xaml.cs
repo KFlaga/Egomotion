@@ -19,9 +19,9 @@ namespace Egomotion
             InitializeComponent();
         }
 
-        public void ProcessImages(Mat left, Mat right, Feature2D detector, double takeBest)
+        public void ProcessImages(Mat left, Mat right, Feature2D detector, Feature2D descriptor, DistanceType distanceType, double takeBest)
         {
-            var match = MatchImagePair.Match(left, right, detector);
+            var match = MatchImagePair.Match(left, right, detector, descriptor, distanceType, 20.0);
             DrawFeatures(left, right, match, takeBest);
 
             var lps = match.LeftPoints.ToArray().Take((int)(match.LeftPoints.Size * takeBest)).ToArray();
@@ -36,33 +36,9 @@ namespace Egomotion
 
         private void DrawFeatures(Mat left, Mat right, MacthingResult match, double takeBest)
         {
-            Mat matchesImage = new Mat();
-            VectorOfVectorOfDMatch matches2 = new VectorOfVectorOfDMatch();
-            VectorOfKeyPoint vectorOfKp1 = new VectorOfKeyPoint(match.LeftKps);
-            VectorOfKeyPoint vectorOfKp2 = new VectorOfKeyPoint(match.RightKps);
-            matches2.Push(new VectorOfDMatch(match.Matches.ToArray().OrderBy((x) => x.Distance).Take((int)(match.Matches.Size * takeBest)).ToArray()));
-            Features2DToolbox.DrawMatches(left, vectorOfKp1, right, vectorOfKp2, matches2, matchesImage, new Bgr(Color.Red).MCvScalar, new Bgr(Color.Blue).MCvScalar);
-
-            macthedView.Source = ImageLoader.ImageSourceForBitmap(matchesImage.Bitmap);
-
-            DrawCricles(leftView, left, match.LeftKps);
-            DrawCricles(rightView, right, match.RightKps);
-        }
-
-        private void DrawCricles(ImageViewer view, Mat image, MKeyPoint[] points)
-        {
-            var processedImage = image.Clone();
-            foreach (var kp in points)
-            {
-                DrawCricle(processedImage, new Bgr(Color.Wheat), new System.Drawing.Point((int)kp.Point.X, (int)kp.Point.Y), new System.Drawing.Size(10, 10));
-            }
-            view.Source = ImageLoader.ImageSourceForBitmap(processedImage.Bitmap);
-        }
-
-        private void DrawCricle(Mat image, Bgr color, System.Drawing.Point center, System.Drawing.Size size)
-        {
-            RotatedRect rect = new RotatedRect(center, size, 0);
-            CvInvoke.Ellipse(image, rect, color.MCvScalar, 1);
+            MatchDrawer.DrawFeatures(left, right, match, takeBest, macthedView);
+            MatchDrawer.DrawCricles(leftView, left, match.LeftKps);
+            MatchDrawer.DrawCricles(rightView, right, match.RightKps);
         }
 
         private void PrintMatricesInfo(Image<Arthmetic, double> E, Image<Arthmetic, double> K, Image<Arthmetic, double> R, Image<Arthmetic, double> T)

@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="640" Width="540">
     <TabControl>
-        <TabItem Header="Load Images">
+        <TabItem Header="Match Images">
             <ScrollViewer>
                 <Grid>
                     <Grid.RowDefinitions>
@@ -17,35 +17,52 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="50*"/>
                         <ColumnDefinition Width="50*"/>
+                        <ColumnDefinition Width="50*"/>
                     </Grid.ColumnDefinitions>
                     <local:ImageLoad Grid.Row="0" Grid.Column="0" x:Name="leftView"/>
-                    <local:ImageLoad Grid.Row="0" Grid.Column="1"   x:Name="rightView"/>
-                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
-                        <Button Click="ProcessImage">Process Image</Button>
+                    <local:ImageLoad Grid.Row="0" Grid.Column="1" x:Name="middleView"/>
+                    <local:ImageLoad Grid.Row="0" Grid.Column="2" x:Name="rightView"/>
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="3">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="50*"/>
+                                <ColumnDefinition Width="5"/>
+                                <ColumnDefinition Width="50*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Click="ProcessImage">Process Image Pair</Button>
+                            <Button Grid.Column="2" Click="ProcessImageTriplet">Process Image Triplet</Button>
+                        </Grid>
                         <local:AlgorithmParametersInput x:Name="parametersInput"/>
                     </StackPanel>
 
                 </Grid>
             </ScrollViewer>
         </TabItem>
-        <TabItem Header="Test Dataset">
+        <TabItem Header="Dataset Player">
             <ScrollViewer>
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="100*"/>
-                        <RowDefinition Height="10*"/>
+                        <RowDefinition Height="30"/>
                         <RowDefinition Height="100*"/>
                     </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="50*"/>
-                        <ColumnDefinition Width="50*"/>
-                    </Grid.ColumnDefinitions>
-                    <local:EgoPlayer x:Name="player" Grid.ColumnSpan="2"/>
-                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
+                    <local:EgoPlayer x:Name="player" Grid.Row="1"/>
+                    <StackPanel Grid.Row="0">
                         <Button Click="LoadDataset">Load Dataset</Button>
                     </StackPanel>
-                    <local:ImageViewer Grid.Row="2"  x:Name="frameLoad1" Grid.ColumnSpan="2" Margin="0,0,254.2,0.2" />
-                    <local:ImageViewer Grid.Row="2" Grid.Column="1" x:Name="frameLoad2" Margin="0,0.2,0.2,0.2" />
+                </Grid>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Dataset Player 3">
+            <ScrollViewer>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="100*"/>
+                    </Grid.RowDefinitions>
+                    <local:EgoPlayer3 x:Name="player3" Grid.Row="1"/>
+                    <StackPanel Grid.Row="0">
+                        <Button Click="LoadDataset3">Load Dataset</Button>
+                    </StackPanel>
                 </Grid>
             </ScrollViewer>
         </TabItem>

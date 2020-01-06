@@ -22,6 +22,10 @@ namespace Egomotion
             {
                 return CreateFloatInput(p);
             }
+            else if (p.Type == typeof(double))
+            {
+                return CreateDoubleInput(p);
+            }
             else if (p.Type == typeof(bool))
             {
                 return CreateBoolInput(p);
@@ -74,6 +78,18 @@ namespace Egomotion
                     Text = p.Default.ToString()
                 },
                 GetValue = (gui) => float.Parse((gui as TextBox).Text)
+            };
+        }
+
+        private static ParameterValueInput CreateDoubleInput(Parameter p)
+        {
+            return new ParameterValueInput()
+            {
+                Gui = new TextBox()
+                {
+                    Text = p.Default.ToString()
+                },
+                GetValue = (gui) => double.Parse((gui as TextBox).Text)
             };
         }
 
