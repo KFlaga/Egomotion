@@ -24,13 +24,14 @@ namespace Egomotion
             var match = MatchImagePair.Match(left, right, detector, descriptor, distanceType, 20.0);
             DrawFeatures(left, right, match, takeBest);
 
-            var lps = match.LeftPoints.ToArray().Take((int)(match.LeftPoints.Size * takeBest)).ToArray();
-            var rps = match.RightPoints.ToArray().Take((int)(match.RightPoints.Size * takeBest)).ToArray();
+            var lps = match.LeftPointsList.Take((int)(match.LeftPoints.Size * takeBest));
+            var rps = match.RightPointsList.Take((int)(match.RightPoints.Size * takeBest));
 
-            var F = ComputeMatrix.F(new VectorOfPointF(lps), new VectorOfPointF(rps));
+            var F = ComputeMatrix.F(new VectorOfPointF(lps.ToArray()), new VectorOfPointF(rps.ToArray()));
             var K = EstimateCameraFromImagePair.K(F, left.Width, right.Height);
             var E = ComputeMatrix.E(F, K);
-            FindTransformation.DecomposeToRT(E, out Image<Arthmetic, double> R, out Image<Arthmetic, double> t);
+            FindTransformation.DecomposeToRTAndTriangulate(lps.ToList(), rps.ToList(), K, E,
+                out Image<Arthmetic, double> R, out Image<Arthmetic, double> t, out Image<Arthmetic, double> X);
             PrintMatricesInfo(E, K, R, t);
         }
 
@@ -41,7 +42,7 @@ namespace Egomotion
             MatchDrawer.DrawCricles(rightView, right, match.RightKps);
         }
 
-        private void PrintMatricesInfo(Image<Arthmetic, double> E, Image<Arthmetic, double> K, Image<Arthmetic, double> R, Image<Arthmetic, double> T)
+        private void PrintMatricesInfo(Image<Arthmetic, double> E, Image<Arthmetic, double> K, Image<Arthmetic, double> R, Image<Arthmetic, double> t)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -51,8 +52,7 @@ namespace Egomotion
             sb.AppendLine();
             sb.AppendLine(string.Format("fx = {0}, fy = {1}", K[0, 0], K[1, 1]));
             sb.AppendLine(string.Format("px = {0}, py = {1}", K[0, 2], K[1, 2]));
-
-            var t = ComputeMatrix.CrossProductToVector(T);
+            
             sb.AppendLine();
             sb.AppendLine(string.Format("tx = {0} ", t[0, 0]));
             sb.AppendLine(string.Format("ty = {0}", t[1, 0]));

@@ -13,13 +13,37 @@ namespace Egomotion
 {
     public class MacthingResult
     {
-        public VectorOfPointF LeftPoints { get; set; }
-        public VectorOfPointF RightPoints { get; set; }
+        VectorOfPointF lps;
+        VectorOfPointF rps;
+
+        public VectorOfPointF LeftPoints
+        {
+            get => lps;
+            set
+            {
+                lps = value;
+                LeftPointsList = lps.ToList();
+            }
+        }
+        public VectorOfPointF RightPoints
+        {
+            get => rps;
+            set
+            {
+                rps = value;
+                RightPointsList = rps.ToList();
+            }
+        }
+
         public List<double> Distances { get; set; }
 
         public MKeyPoint[] LeftKps { get; set; }
         public MKeyPoint[] RightKps { get; set; }
         public VectorOfDMatch Matches { get; set; }
+
+        // For convience
+        public List<PointF> LeftPointsList { get; set; }
+        public List<PointF> RightPointsList { get; set; }
     }
 
     public static class MatchImagePair

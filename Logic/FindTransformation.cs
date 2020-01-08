@@ -30,18 +30,18 @@ namespace Egomotion
         {
             var match = MatchImagePair.Match(left, right, detector, descriptor, distanceType, maxDistance);
 
-            var lps = match.LeftPoints.ToArray().Take((int)(match.LeftPoints.Size * takeBest)).ToArray();
-            var rps = match.RightPoints.ToArray().Take((int)(match.RightPoints.Size * takeBest)).ToArray();
+            var lps = match.LeftPointsList.Take((int)(match.LeftPoints.Size * takeBest));
+            var rps = match.RightPointsList.Take((int)(match.RightPoints.Size * takeBest));
 
-            var F = ComputeMatrix.F(new VectorOfPointF(lps), new VectorOfPointF(rps));
+            var F = ComputeMatrix.F(new VectorOfPointF(lps.ToArray()), new VectorOfPointF(rps.ToArray()));
             if (F == null)
             {
                 return null;
             }
 
             var E = ComputeMatrix.E(F, K);
-            DecomposeToRT(E, out Image<Arthmetic, double> R, out Image<Arthmetic, double> t);
-            t = ComputeMatrix.CrossProductToVector(t);
+            DecomposeToRTAndTriangulate(lps.ToList(), rps.ToList(), K, E,
+                out Image<Arthmetic, double> R, out Image<Arthmetic, double> t, out Image<Arthmetic, double> X);
 
             OdometerFrame odometerFrame = new OdometerFrame();
             odometerFrame.Rotation = RotationConverter.MatrixToEulerXYZ(R);
@@ -57,9 +57,11 @@ namespace Egomotion
             return odometerFrame;
         }
 
-        public static void DecomposeToRT(Image<Arthmetic, double> F, out Image<Arthmetic, double> R, out Image<Arthmetic, double> t)
+        public static void DecomposeToRT(Image<Arthmetic, double> E,
+            out Image<Arthmetic, double>[] Rs,
+            out Image<Arthmetic, double>[] ts)
         {
-            var svd = new Svd(F);
+            var svd = new Svd(E);
 
             Image<Arthmetic, double> W = new Image<Arthmetic, double>(new double[,,] {
                 { {0}, {-1 }, {0 } } ,
@@ -68,16 +70,14 @@ namespace Egomotion
             });
 
             var R1 = svd.U.Multiply(W.T()).Multiply(svd.VT);
+            double det1 = CvInvoke.Determinant(R1);
+            if (det1 < 0)
+                R1 = R1.Mul(-1);
+
             var R2 = svd.U.Multiply(W).Multiply(svd.VT);
-
-            var I = new Image<Arthmetic, double>(3, 3);
-            I[0, 0] = 1;
-            I[1, 1] = 1;
-            I[2, 2] = 1;
-
-            var s1 = (R1 - I).Norm;
-            var s2 = (R2 - I).Norm;
-            R = s1 < s2 ? R1 : R2;
+            double det2 = CvInvoke.Determinant(R2);
+            if (det2 < 0)
+                R2 = R2.Mul(-1);
             
             double ss = (svd.S[0, 0] + svd.S[1, 0]) / 2;
 
@@ -87,9 +87,96 @@ namespace Egomotion
                 { {0}, {0 }, {0 } } ,
             });
 
-            t = svd.U.Multiply(Z).Multiply(svd.U.T());
+            var t1 = svd.U.Multiply(Z).Multiply(svd.U.T());
+            t1 = ComputeMatrix.CrossProductToVector(t1);
+            var t2 = t1.Mul(-1);
+
+            Rs = new Image<Arthmetic, double>[] { R1, R2 };
+            ts = new Image<Arthmetic, double>[] { t1, t2 };
         }
-        
+
+        public static void DecomposeToRTAndTriangulate(
+            List<PointF> left, List<PointF> right, Image<Arthmetic, double> K, Image<Arthmetic, double> E,
+            out Image<Arthmetic, double> R, out Image<Arthmetic, double> t, out Image<Arthmetic, double> pts3d)
+        {
+            pts3d = null;
+            R = null;
+            t = null;
+
+            DecomposeToRT(E, out Image<Arthmetic, double>[] Rs, out Image<Arthmetic, double>[] ts);
+
+            int maxInliners = -1;
+            for(int i = 0; i < Rs.Length; ++i)
+            {
+                for(int j = 0; j < ts.Length; ++j)
+                {
+                    int inliners = TriangulateChieral(left, right, K, Rs[i], ts[j], out Image<Arthmetic, double> X);
+                    if(inliners > maxInliners)
+                    {
+                        maxInliners = inliners;
+                        pts3d = X;
+                        R = Rs[i];
+                        t = ts[i];
+                    }
+                }
+            }
+        }
+
+        public static int TriangulateChieral(
+            List<PointF> left, List<PointF> right, Image<Arthmetic, double> K,
+            Image<Arthmetic, double> R,Image<Arthmetic, double> t,
+            out Image<Arthmetic, double> pts3d)
+        {
+            // init 3d point matrix
+            pts3d = new Image<Arthmetic, double>(left.Count, 4);
+
+            // init projection matrices
+            var P1 = new Image<Arthmetic, double>(new double[,,] {
+                { {K[0, 0]}, {0}, {K[0, 2]}, {0} } ,
+                { {0}, {K[1, 1]}, {K[1, 2]}, {0} } ,
+                { {0}, {0}, {1}, {0} } ,
+            });
+
+            var P2 = new Image<Arthmetic, double>(new double[,,] {
+                { {1}, {0}, {1}, {t[0, 0]} } ,
+                { {0}, {1}, {1}, {t[1, 0]} } ,
+                { {0}, {0}, {1}, {t[2, 0]} } ,
+            });
+            P2 = K.Multiply(R).Multiply(P2);
+
+            // Transform points lists into matrices
+            var img1 = new Image<Arthmetic, double>(left.Count, 2);
+            var img2 = new Image<Arthmetic, double>(left.Count, 2);
+            for (int i = 0; i < left.Count; ++i)
+            {
+                img1[0, i] = left[i].X;
+                img1[1, i] = left[i].Y;
+                img2[0, i] = right[i].X;
+                img2[1, i] = right[i].Y;
+            }
+
+            CvInvoke.TriangulatePoints(P1, P2, img1, img2, pts3d);
+
+            // Scale points, so that W = 1
+            for (int i = 0; i < left.Count; ++i)
+            {
+                pts3d[0, i] = pts3d[0, i] / pts3d[3, i];
+                pts3d[1, i] = pts3d[1, i] / pts3d[3, i];
+                pts3d[2, i] = pts3d[2, i] / pts3d[3, i];
+                pts3d[3, i] = pts3d[3, i] / pts3d[3, i];
+            }
+
+            // compute points in front of camera (TODO: how does it work?)
+            var AX1 = P1.Multiply(pts3d);
+            var BX1 = P2.Multiply(pts3d);
+            int num = 0;
+            for (int i = 0; i < left.Count; i++)
+                if (AX1[2, i] * pts3d[3, i] > 0 && BX1[2, i] * pts3d[3, i] > 0)
+                    num++;
+            
+            return num;
+        }
+
         private static bool AreEqual(PointF p1, PointF p2, double pointErr)
         {
             return Math.Abs(p1.X - p2.X) < pointErr && Math.Abs(p1.Y - p2.Y) < pointErr;
@@ -176,9 +263,11 @@ namespace Egomotion
                 ComputeMatrix.E(F13, K)
             };
 
-            FindTransformation.DecomposeToRT(Es[0], out Image<Arthmetic, double> R12, out Image<Arthmetic, double> t12);
+            FindTransformation.DecomposeToRTAndTriangulate(tmatch.Left, tmatch.Middle, K, Es[0],
+                out Image<Arthmetic, double> R12, out Image<Arthmetic, double> t12, out Image<Arthmetic, double> X12);
             // FindTransformation.DecomposeToRT(Es[1], out Image<Arthmetic, double> R23, out Image<Arthmetic, double> t23);
-            FindTransformation.DecomposeToRT(Es[1], out Image<Arthmetic, double> R13, out Image<Arthmetic, double> t13);
+            FindTransformation.DecomposeToRTAndTriangulate(tmatch.Left, tmatch.Right, K, Es[1],
+                out Image<Arthmetic, double> R13, out Image<Arthmetic, double> t13, out Image<Arthmetic, double> X13);
 
             var Rs = new List<Image<Arthmetic, double>>
             {
@@ -187,8 +276,8 @@ namespace Egomotion
             };
             var ts = new List<Image<Arthmetic, double>>
             {
-                ComputeMatrix.CrossProductToVector(t12),
-                ComputeMatrix.CrossProductToVector(t13)
+                t12,
+                t13
             };
 
             var cc = ComputeCameraCenter3(K, Rs, ts, tmatch);

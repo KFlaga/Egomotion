@@ -17,7 +17,7 @@ namespace Egomotion
                 return null;
             }
 
-            Mat F = CvInvoke.FindFundamentalMat(leftPoints, rightPoints);
+            Mat F = CvInvoke.FindFundamentalMat(leftPoints, rightPoints, Emgu.CV.CvEnum.FmType.LMeds, 3, 0.999);
             if (F.Rows == 0)
             {
                 return null;

@@ -111,9 +111,12 @@ namespace Egomotion
                 ComputeMatrix.E(F13, K)
             };
 
-            FindTransformation.DecomposeToRT(Es[0], out Image<Arthmetic, double> R12, out Image<Arthmetic, double> t12);
-            FindTransformation.DecomposeToRT(Es[1], out Image<Arthmetic, double> R23, out Image<Arthmetic, double> t23);
-            FindTransformation.DecomposeToRT(Es[2], out Image<Arthmetic, double> R13, out Image<Arthmetic, double> t13);
+            FindTransformation.DecomposeToRTAndTriangulate(tmatch.Left, tmatch.Middle, K, Es[0],
+                out Image<Arthmetic, double> R12, out Image<Arthmetic, double> t12, out Image<Arthmetic, double> X12);
+            FindTransformation.DecomposeToRTAndTriangulate(tmatch.Middle, tmatch.Right, K, Es[1],
+                out Image<Arthmetic, double> R23, out Image<Arthmetic, double> t23, out Image<Arthmetic, double> X23);
+            FindTransformation.DecomposeToRTAndTriangulate(tmatch.Left, tmatch.Right, K, Es[2],
+                out Image<Arthmetic, double> R13, out Image<Arthmetic, double> t13, out Image<Arthmetic, double> X13);
 
             var Rs = new List<Image<Arthmetic, double>>
             {
@@ -123,9 +126,9 @@ namespace Egomotion
             };
             var ts = new List<Image<Arthmetic, double>>
             {
-                ComputeMatrix.CrossProductToVector(t12),
-                ComputeMatrix.CrossProductToVector(t23),
-                ComputeMatrix.CrossProductToVector(t13)
+                t12,
+                t23,
+                t13
             };
 
             PrintMatricesInfo(Es, K, Rs, ts);
