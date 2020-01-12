@@ -137,10 +137,11 @@ namespace Egomotion
                 { {0}, {0}, {1}, {0} } ,
             });
 
+            var C = R.T().Multiply(t);
             var P2 = new Image<Arthmetic, double>(new double[,,] {
-                { {1}, {0}, {1}, {t[0, 0]} } ,
-                { {0}, {1}, {1}, {t[1, 0]} } ,
-                { {0}, {0}, {1}, {t[2, 0]} } ,
+                { {1}, {0}, {0}, {C[0, 0]} } ,
+                { {0}, {1}, {0}, {C[1, 0]} } ,
+                { {0}, {0}, {1}, {C[2, 0]} } ,
             });
             P2 = K.Multiply(R).Multiply(P2);
 
@@ -175,6 +176,46 @@ namespace Egomotion
                     num++;
             
             return num;
+        }
+
+        public static void NormalizePoints2d(List<PointF> pts, out Image<Arthmetic, double> N)
+        {
+            // Compute centroid of both point sets
+            float mean_x = 0, mean_y = 0;
+            for (int i = 0; i < pts.Count; ++i)
+            {
+                mean_x += pts[i].X;
+                mean_y += pts[i].Y;
+            }
+            mean_x /= pts.Count;
+            mean_y /= pts.Count;
+
+            // Shift origins to centroids
+            for (int i = 0; i < pts.Count; ++i)
+            {
+                pts[i] = PointF.Subtract(pts[i], new SizeF(mean_x, mean_y));
+            }
+
+            // Scale points so that mean distance from origin is sqrt(2)
+            float scale = 0, scale_r = 0;
+            for (int i = 0; i < pts.Count; ++i)
+            {
+                scale += (float)Math.Sqrt(pts[i].X * pts[i].X + pts[i].Y * pts[i].Y);
+            }
+
+            float targetMean = (float)Math.Sqrt(2.0);
+            scale = targetMean * pts.Count / scale;
+            for (int i = 0; i < pts.Count; ++i)
+            {
+                pts[i] = new PointF(pts[i].X * scale, pts[i].Y * scale);
+            }
+
+            // compute corresponding transformation matrices
+            N = new Image<Arthmetic, double>(new double[,,] {
+                { {scale}, {0}, {-scale * mean_x}, } ,
+                { {0}, {scale}, {-scale * mean_y}, } ,
+                { {0}, {0}, {1}, } ,
+            });
         }
 
         private static bool AreEqual(PointF p1, PointF p2, double pointErr)
