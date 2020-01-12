@@ -1,5 +1,7 @@
-﻿using Emgu.CV.Structure;
+﻿using Emgu.CV;
+using Emgu.CV.Structure;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -45,5 +47,30 @@ namespace Egomotion
             });
             return loadedImage;
         }
+
+        public static List<Mat> LoadVideo()
+        {
+            Emgu.CV.VideoCapture videoCapture;
+            List<Mat> framesFromVideo = new List<Mat>();
+            FileOp.LoadFromFile((s, path) =>
+            {
+                videoCapture = new Emgu.CV.VideoCapture(path);
+                while (true)
+                {
+                    Mat mat = new Mat();
+                    videoCapture.Read(mat);
+                    if (mat.Rows == 0)
+                        return;
+
+                    framesFromVideo.Add(mat);
+
+                    for (int p = 0; p < 9; p++)
+                    {
+                        videoCapture.Read(mat);
+                    }
+                }
+            });
+            return framesFromVideo;
+        } 
     }
 }

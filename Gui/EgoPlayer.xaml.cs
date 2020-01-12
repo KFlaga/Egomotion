@@ -25,7 +25,7 @@ namespace Egomotion
         int framesPerSecond;
         Timer nextFrameTimer = new Timer();
         int currentFrame = 0;
-        Image<Arthmetic, double> K;
+        public Image<Arthmetic, double> K;
         bool isRunning = false;
 
         Image<Arthmetic, double> totalRotation;
@@ -43,8 +43,10 @@ namespace Egomotion
 
                 totalRotation = frames[0].Odometry.RotationMatrix;
                 totalTranslation = new Image<Arthmetic, double>(1,3);
-
-                ComputeK(frames);
+                if (K == null)
+                {
+                    ComputeK(frames);
+                }
                 Dispatcher.BeginInvoke((Action)(() =>
                 {
                     frameProgression.Minimum = 0;

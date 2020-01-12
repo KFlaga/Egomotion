@@ -194,6 +194,7 @@ namespace Egomotion
         int MaxPairsForK => ((int)Parameter.ValueFor("Max image pairs for K", parametersInput.Parameters, parametersInput.Values));
         int Step => ((int)Parameter.ValueFor("Video Step", parametersInput.Parameters, parametersInput.Values));
         DistanceType DistanceType => ((DistanceType)Parameter.ValueFor("DistanceType", parametersInput.Parameters, parametersInput.Values));
+        Image<Arthmetic, Double> matK;
 
         private void ProcessImage(object sender, RoutedEventArgs e)
         {
@@ -242,6 +243,7 @@ namespace Egomotion
 
             if(dataset != null)
             {
+                player.K = matK;
                 player.Detector = Detector;
                 player.Descriptor = Descriptor;
                 player.DistanceType = DistanceType;
@@ -276,6 +278,25 @@ namespace Egomotion
                 player3.Step = Step;
                 player3.Frames = dataset.Frames;
             }
+        }
+
+        private void LoadParK(object sender, RoutedEventArgs e)
+        {
+            FileOp.LoadFromFile((file, path) => {
+                SaveAndLoad.LoadCalibration(file, out Mat camMat, out VectorOfFloat distCoeffs);
+                matK = camMat.ToImage<Arthmetic, Double>();
+            });
+        }
+        private void LoadVideoFromFile(object sender, RoutedEventArgs e)
+        {
+            List<Mat> framesFromVideo = ImageLoader.LoadVideo();
+            myplayer.K = matK;
+            myplayer.Detector = Detector;
+            myplayer.Descriptor = Descriptor;
+            myplayer.DistanceType = DistanceType;
+            myplayer.TakeBest = TakeBest;
+            myplayer.Step = Step;
+            myplayer.Frames = framesFromVideo;
         }
     }
 }

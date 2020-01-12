@@ -81,6 +81,7 @@
     <Compile Include="MatchImagePair.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RotationConverter.cs" />
+    <Compile Include="SaveAndLoad.cs" />
     <Compile Include="Svd.cs" />
     <Compile Include="VisualOdometer.cs" />
   </ItemGroup>
