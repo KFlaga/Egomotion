@@ -71,6 +71,7 @@
     <Compile Include="ArthmeticMatrix.cs" />
     <Compile Include="ComputeMatrix.cs" />
     <Compile Include="Dataset.cs" />
+    <Compile Include="Errors.cs" />
     <Compile Include="EstimateCameraFromImagePair.cs" />
     <Compile Include="EstimateCameraFromImageSequence.cs" />
     <Compile Include="FileOp.cs" />

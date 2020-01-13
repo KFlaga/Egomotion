@@ -16,7 +16,7 @@ namespace Egomotion
             {
                 return null;
             }
-
+            
             Mat F = CvInvoke.FindFundamentalMat(leftPoints, rightPoints, Emgu.CV.CvEnum.FmType.LMeds, 3, 0.999);
             if (F.Rows == 0)
             {
@@ -48,6 +48,33 @@ namespace Egomotion
             t[1, 0] = tx[0, 2];
             t[2, 0] = tx[1, 0];
             return t;
+        }
+
+        public static Image<Arthmetic, double> Camera(Image<Arthmetic, double> K, Image<Arthmetic, double> R, Image<Arthmetic, double> t, bool tIsCenter = false)
+        {
+            var C = tIsCenter ? t : Center(t, R);
+            var P = new Image<Arthmetic, double>(new double[,,] {
+                { {1}, {0}, {0}, {-C[0, 0]} } ,
+                { {0}, {1}, {0}, {-C[1, 0]} } ,
+                { {0}, {0}, {1}, {-C[2, 0]} } ,
+            });
+            P = K.Multiply(R).Multiply(P);
+            return P;
+        }
+
+        public static Image<Arthmetic, double> Camera(Image<Arthmetic, double> K)
+        {
+            var P = new Image<Arthmetic, double>(new double[,,] {
+                { {K[0, 0]}, {0}, {K[0, 2]}, {0} } ,
+                { {0}, {K[1, 1]}, {K[1, 2]}, {0} } ,
+                { {0}, {0}, {1}, {0} } ,
+            });
+            return P;
+        }
+
+        public static Image<Arthmetic, double> Center(Image<Arthmetic, double> t, Image<Arthmetic, double> R)
+        {
+            return R.T().Multiply(t).Mul(-1);
         }
     }
 }

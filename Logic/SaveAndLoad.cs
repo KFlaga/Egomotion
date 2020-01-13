@@ -36,6 +36,7 @@ namespace Egomotion
             P[1, 1] = double.Parse(reader.ReadLine());
             P[0, 2] = double.Parse(reader.ReadLine());
             P[1, 2] = double.Parse(reader.ReadLine());
+            P[2, 2] = 1.0;
             for (int i = 0; i < 5; ++i)
             {
                 dist[i] = (float)double.Parse(reader.ReadLine());

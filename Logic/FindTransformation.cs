@@ -33,28 +33,45 @@ namespace Egomotion
             var lps = match.LeftPointsList.Take((int)(match.LeftPoints.Size * takeBest));
             var rps = match.RightPointsList.Take((int)(match.RightPoints.Size * takeBest));
 
-            var F = ComputeMatrix.F(new VectorOfPointF(lps.ToArray()), new VectorOfPointF(rps.ToArray()));
-            if (F == null)
+            var lps_n = lps.ToList();
+            var rps_n = rps.ToList();
+            var H = EstimateHomography(lps_n, rps_n, K);
+            if(IsPureRotation(H, 0.02))
             {
-                return null;
+                OdometerFrame odometerFrame = new OdometerFrame();
+                odometerFrame.Rotation = RotationConverter.MatrixToEulerXYZ(H);
+                odometerFrame.RotationMatrix = RotationConverter.EulerXYZToMatrix(odometerFrame.Rotation);
+                odometerFrame.MatK = K;
+                odometerFrame.Match = match;
+                odometerFrame.Translation = new Image<Arthmetic, double>(1, 3);
+                return odometerFrame;
             }
+            else
+            {
+                FindTransformation.NormalizePoints2d(lps_n, out var NL);
+                FindTransformation.NormalizePoints2d(rps_n, out var NR);
 
-            var E = ComputeMatrix.E(F, K);
-            DecomposeToRTAndTriangulate(lps.ToList(), rps.ToList(), K, E,
-                out Image<Arthmetic, double> R, out Image<Arthmetic, double> t, out Image<Arthmetic, double> X);
+                var F = ComputeMatrix.F(new VectorOfPointF(lps_n.ToArray()), new VectorOfPointF(rps_n.ToArray()));
+                if (F == null)
+                {
+                    return null;
+                }
+                F = NR.T().Multiply(F).Multiply(NL);
 
-            OdometerFrame odometerFrame = new OdometerFrame();
-            odometerFrame.Rotation = RotationConverter.MatrixToEulerXYZ(R);
-            odometerFrame.RotationMatrix = R;
-            odometerFrame.MatK = K;
-            odometerFrame.Match = match;
+                var E = ComputeMatrix.E(F, K);
+                DecomposeToRTAndTriangulate(lps.ToList(), rps.ToList(), K, E,
+                    out Image<Arthmetic, double> R, out Image<Arthmetic, double> t, out Image<Arthmetic, double> X);
 
-        //    Image<Arthmetic, double> C = ComputeCameraCenter(R, t, K, match);
-          //  odometerFrame.Translation = R.Multiply(C);
-            //   odometerFrame.Translation = R.T().Multiply(odometerFrame.Translation);
-            odometerFrame.Translation = t;
+                OdometerFrame odometerFrame = new OdometerFrame();
+                odometerFrame.Rotation = RotationConverter.MatrixToEulerXYZ(R);
+                odometerFrame.RotationMatrix = R;
+                odometerFrame.MatK = K;
+                odometerFrame.Match = match;
 
-            return odometerFrame;
+                Image<Arthmetic, double> C = R.T().Multiply(t).Mul(-1);
+                odometerFrame.Translation = C.Mul(1.0 / C.Norm);
+                return odometerFrame;
+            }
         }
 
         public static void DecomposeToRT(Image<Arthmetic, double> E,
@@ -131,19 +148,8 @@ namespace Egomotion
             pts3d = new Image<Arthmetic, double>(left.Count, 4);
 
             // init projection matrices
-            var P1 = new Image<Arthmetic, double>(new double[,,] {
-                { {K[0, 0]}, {0}, {K[0, 2]}, {0} } ,
-                { {0}, {K[1, 1]}, {K[1, 2]}, {0} } ,
-                { {0}, {0}, {1}, {0} } ,
-            });
-
-            var C = R.T().Multiply(t);
-            var P2 = new Image<Arthmetic, double>(new double[,,] {
-                { {1}, {0}, {0}, {C[0, 0]} } ,
-                { {0}, {1}, {0}, {C[1, 0]} } ,
-                { {0}, {0}, {1}, {C[2, 0]} } ,
-            });
-            P2 = K.Multiply(R).Multiply(P2);
+            var P1 = ComputeMatrix.Camera(K);
+            var P2 = ComputeMatrix.Camera(K, R, t);
 
             // Transform points lists into matrices
             var img1 = new Image<Arthmetic, double>(left.Count, 2);
@@ -197,7 +203,7 @@ namespace Egomotion
             }
 
             // Scale points so that mean distance from origin is sqrt(2)
-            float scale = 0, scale_r = 0;
+            float scale = 0;
             for (int i = 0; i < pts.Count; ++i)
             {
                 scale += (float)Math.Sqrt(pts[i].X * pts[i].X + pts[i].Y * pts[i].Y);
@@ -216,6 +222,44 @@ namespace Egomotion
                 { {0}, {scale}, {-scale * mean_y}, } ,
                 { {0}, {0}, {1}, } ,
             });
+        }
+
+        public static Image<Arthmetic, double> EstimateHomography(List<PointF> left, List<PointF> right, Image<Arthmetic, double> K)
+        {
+            var Kinv = new Image<Arthmetic, double>(3, 3);
+            CvInvoke.Invert(K, Kinv, Emgu.CV.CvEnum.DecompMethod.Svd);
+
+            var LP = Kinv.Multiply(Errors.Matrixify(left));
+            var RP = Kinv.Multiply(Errors.Matrixify(right));
+
+            PointF[] lps = new PointF[left.Count];
+            PointF[] rps = new PointF[left.Count];
+            for (int i = 0; i < left.Count; ++i)
+            {
+                lps[i].X = (float)(LP[0, i] / LP[2, i]);
+                lps[i].Y = (float)(LP[1, i] / LP[2, i]);
+                rps[i].X = (float)(RP[0, i] / RP[2, i]);
+                rps[i].Y = (float)(RP[1, i] / RP[2, i]);
+            }
+
+            var h = CvInvoke.FindHomography(lps, rps, Emgu.CV.CvEnum.RobustEstimationAlgorithm.LMEDS);
+            return h.ToImage<Arthmetic, double>();
+        }
+
+        public static bool IsPureRotation(Image<Arthmetic, double> H, double threshold = 0.05)
+        {
+            var svd = new Svd(H);
+            // If this is rotation all eigenvalues should be close to 1.0
+            double ratio = svd.S[2, 0] / svd.S[0, 0];
+            if(ratio < 1.0 - threshold)
+            {
+                return false;
+            }
+            if(Math.Abs(svd.S[0, 0] - 1.0) > threshold)
+            {
+                return false;
+            }
+            return true;
         }
 
         private static bool AreEqual(PointF p1, PointF p2, double pointErr)

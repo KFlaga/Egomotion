@@ -181,8 +181,8 @@ namespace Egomotion
             {
                 new Parameter("Take % of best features", typeof(float), 100.0f),
                 new Parameter("Max image pairs for K", typeof(float), 50),
-                new Parameter("Video Step", typeof(int), 4),
-                new Parameter("DistanceType", typeof(DistanceType), DistanceType.L2),
+                new Parameter("Video Step", typeof(int), 1),
+                new Parameter("DistanceType", typeof(DistanceType), DistanceType.Hamming),
                 new Parameter("Feature Detector", typeof(PickFeatureDetector), null),
                 new Parameter("Feature Descriptor", typeof(PickFeatureDescriptor), null),
             };
@@ -289,6 +289,12 @@ namespace Egomotion
         }
         private void LoadVideoFromFile(object sender, RoutedEventArgs e)
         {
+            if(matK == null)
+            {
+                MessageBox.Show("Need to load calibration first");
+                return;
+            }
+
             List<Mat> framesFromVideo = ImageLoader.LoadVideo();
             myplayer.K = matK;
             myplayer.Detector = Detector;

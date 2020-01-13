@@ -140,15 +140,16 @@ namespace Egomotion
             Dispatcher.BeginInvoke((Action)(() =>
             {
                 currentFrame = n;
-                var frame = frames[n];
-                var frame2 = frames[n + Step];
-
-                var mat = frame.ToImage<Bgr, byte>();
-                var mat2 = frame2.ToImage<Bgr, byte>();
 
                 try
                 {
-                    double maxDistance = 20.0;
+                    var frame = frames[n];
+                    var frame2 = frames[n + Step];
+
+                    var mat = frame.ToImage<Bgr, byte>();
+                    var mat2 = frame2.ToImage<Bgr, byte>();
+
+                    double maxDistance = Math.Max(10.0, 0.05 * (frame.Rows + frame.Cols));
                     OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, Detector, Descriptor, DistanceType, maxDistance, K);
                     if (odometerFrame != null)
                     {

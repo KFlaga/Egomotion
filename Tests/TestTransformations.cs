@@ -86,10 +86,16 @@ namespace Tests
             });
 
             C2 = new Image<Arthmetic, double>(new double[,,] {
-                { {50.0}} ,
-                { {30.0}} ,
-                { {-20.0}} ,
+                { {6.0}} ,
+                { {6.0}} ,
+                { {-3.0}} ,
             });
+
+            //C2 = new Image<Arthmetic, double>(new double[,,] {
+            //    { {0.0}} ,
+            //    { {0.0}} ,
+            //    { {0.0}} ,
+            //});
 
             C3 = new Image<Arthmetic, double>(new double[,,] {
                 { {30.0}} ,
@@ -104,7 +110,7 @@ namespace Tests
             });
 
             R1 = I();
-            R12 = Rz(10.0);
+            R12 = Rx(5.0).Multiply(Rz(5.0));
             R13 = Rz(25.0);
             R14 = Rz(15.0);
             R23 = Rz(15.0);
@@ -266,11 +272,37 @@ namespace Tests
             var tt0 = T12.Mul(1 / T12.Norm);
             var tt1 = TT.Mul(1 / TT.Norm);
 
-            FindTraingulationError(ptsReal, estReal, out double mean1, out double median1, out List<double> errors1);
-            FindReprojectionError(estReal, pts2, K, RR, tt1, out double mean_r1a, out double median_r1a, out List<double> _1);
-            FindReprojectionError(estReal, pts2Ref, K, RR, tt1, out double mean_r1b, out double median_r1b, out List<double> _2);
-            FindReprojectionError(estReal, pts2Ref, K, R12, tt0, out double mean_r1c, out double median_r1c, out List<double> _3);
-            FindReprojectionError(Matrixify(ptsReal), pts2Ref, K, RR, tt1, out double mean_r1e, out double median_r1e, out List<double> _5);
+            Errors.TraingulationError(ptsReal, estReal, out double mean1, out double median1, out List<double> errors1);
+            Errors.ReprojectionError(estReal, pts2, K, RR, tt1, out double mean_r1a, out double median_r1a, out List<double> _1);
+            Errors.ReprojectionError(estReal, pts2Ref, K, RR, tt1, out double mean_r1b, out double median_r1b, out List<double> _2);
+            Errors.ReprojectionError(estReal, pts2Ref, K, R12, tt0, out double mean_r1c, out double median_r1c, out List<double> _3);
+            Errors.ReprojectionError(Errors.Matrixify(ptsReal), pts2Ref, K, RR, tt1, out double mean_r1e, out double median_r1e, out List<double> _5);
+            
+            var H1 = FindTransformation.EstimateHomography(pts1, pts2, K);
+            var H2 = FindTransformation.EstimateHomography(pts1Ref, pts2Ref, K);
+            var hrr1 = RotationConverter.MatrixToEulerXYZ(H1);
+            var hrr2 = RotationConverter.MatrixToEulerXYZ(H2);
+            var zeroT = new Image<Arthmetic, double>(1, 3);
+            
+            var H3 = RotationConverter.EulerXYZToMatrix(hrr1);
+            var hrr3 = RotationConverter.MatrixToEulerXYZ(H1);
+
+            var svdH = new Svd(H1);
+
+            bool isRotation = FindTransformation.IsPureRotation(H1);
+
+            Errors.ReprojectionError2d(pts1Ref, pts2Ref, K, H2, out double mean_h2, out double median_h2, out var err_h2);
+            Errors.ReprojectionError2d(pts1, pts2, K, H1, out double mean_h1, out double median_h1, out var err_h1);
+            Errors.ReprojectionError2d(pts1, pts2, K, H3, out double mean_h3, out double median_h3, out var err_h3);
+
+            Errors.ReprojectionError2dWithT(pts1, pts2, K, H1, zeroT, out double scale1, out double mean_h1a, out double median_h1a, out var err_h1a);
+            Errors.ReprojectionError2dWithT(pts1, pts2, K, H3, zeroT, out double scale1x, out double mean_h1ax, out double median_h1ax, out var err_h1ax);
+            //  Errors.ReprojectionError2dWithT(pts1, pts2, K, R12, tt0, out double scale2, out double mean_h1b, out double median_h1b, out var err_h1b);
+            Errors.ReprojectionError2dWithT(pts1, pts2, K, RR, tt1, out double scale3, out double mean_h1c, out double median_h1c, out var err_h1c);
+            Errors.ReprojectionError2dWithT(pts1, pts2, K, R12, tt1, out double scale5, out double mean_h1c1, out double median_h1c1, out var err_h1c1);
+            Errors.ReprojectionError2dWithT(pts1Ref, pts2Ref, K, R12, tt0, out double scale6, out double mean_h1c2, out double median_h1c2, out var err_h1c2);
+            Errors.ReprojectionError2dWithT(pts1, pts2, K, H1, tt1, out double scale4, out double mean_h1d, out double median_h1d, out var err_h1d);
+
             var KK = EstimateCameraFromImagePair.K(F, 600, 500);
             var EE = ComputeMatrix.E(F, KK);
             var svd2 = new Svd(EE);
@@ -279,87 +311,11 @@ namespace Tests
             var tt2 = TT2.Mul(1 / TT2.Norm);
             var rr2 = RotationConverter.MatrixToEulerXYZ(RR2);
 
-            FindTraingulationError(ptsReal, estReal2, out double mean2, out double median2, out List<double> errors2);
-            FindReprojectionError(estReal2, pts2, KK, RR2, tt2, out double mean_r2a, out double median_r2a, out List<double> _1x);
-            FindReprojectionError(estReal2, pts2Ref, KK, RR2, tt2, out double mean_r2b, out double median_r2b, out List<double> _2x);
-            FindReprojectionError(estReal2, pts2Ref, KK, R12, tt0, out double mean_r2c, out double median_r2c, out List<double> _3x);
-            FindReprojectionError(Matrixify(ptsReal), pts2Ref, KK, RR2, tt2, out double mean_r2e, out double median_r2e, out List<double> _5x);
-        }
-
-        private static void FindTraingulationError(
-            List<Image<Arthmetic, double>> ptsReal, Image<Arthmetic, double> estReal,
-            out double mean, out double median, out List<double> errors)
-        {
-            errors = new List<double>();
-            for (int i = 0; i < ptsReal.Count; ++i)
-            {
-                var estPoint = new Image<Arthmetic, double>(new double[,,]
-                {
-                    {{estReal[0, i]}}, {{estReal[1, i]}}, {{estReal[2, i]}},
-                });
-                var realPoint = new Image<Arthmetic, double>(new double[,,]
-                {
-                    {{ptsReal[i][0, 0]}}, {{ptsReal[i][1, 0]}}, {{ptsReal[i][2, 0]}},
-                });
-
-                var p1 = estPoint.Mul(1 / estPoint.Norm);
-                var p2 = realPoint.Mul(1 / realPoint.Norm);
-
-                errors.Add(p1.Sub(p2).Norm);
-            }
-            mean = errors.Sum() / errors.Count;
-            median = errors[errors.Count / 2];
-        }
-
-        private static Image<Arthmetic, double> Matrixify(List<Image<Arthmetic, double>> pts)
-        {
-            Image<Arthmetic, double> X = new Image<Arthmetic, double>(pts.Count, pts[0].Rows);
-            for(int i = 0; i < pts.Count; ++i)
-            {
-                for(int j = 0; j < pts[0].Rows; ++j)
-                {
-                    X[j, i] = pts[i][j, 0];
-                }
-            }
-            return X;
-        }
-        
-        private void FindReprojectionError(
-            Image<Arthmetic, double> estReal, List<PointF> img, Image<Arthmetic, double> K, Image<Arthmetic, double> R, Image<Arthmetic, double> t,
-            out double mean, out double median, out List<double> errors)
-        {
-            var C = R.T().Multiply(t);
-            var P = new Image<Arthmetic, double>(new double[,,] {
-                { {1}, {0}, {0}, {C[0, 0]} } ,
-                { {0}, {1}, {0}, {C[1, 0]} } ,
-                { {0}, {0}, {1}, {C[2, 0]} } ,
-            });
-            P = K.Multiply(R).Multiply(P);
-
-            var estImg = P.Multiply(estReal);
-            
-            errors = new List<double>();
-            for (int i = 0; i < img.Count; ++i)
-            {
-                var estPoint = new Image<Arthmetic, double>(new double[,,]
-                {
-                    {{estImg[0, i] / estImg[2, i]}}, {{estImg[1, i] / estImg[2, i]}},
-                });
-                var realPoint = new Image<Arthmetic, double>(new double[,,]
-                {
-                    {{img[i].X}}, {{img[i].Y}},
-                });
-
-             //   var p1 = estPoint.Mul(1 / estPoint.Norm);
-             //   var p2 = realPoint.Mul(1 / realPoint.Norm);
-
-                var p1 = estPoint;
-                var p2 = realPoint;
-
-                errors.Add(p1.Sub(p2).Norm);
-            }
-            mean = errors.Sum() / errors.Count;
-            median = errors[errors.Count / 2];
+            Errors.TraingulationError(ptsReal, estReal2, out double mean2, out double median2, out List<double> errors2);
+            Errors.ReprojectionError(estReal2, pts2, KK, RR2, tt2, out double mean_r2a, out double median_r2a, out List<double> _1x);
+            Errors.ReprojectionError(estReal2, pts2Ref, KK, RR2, tt2, out double mean_r2b, out double median_r2b, out List<double> _2x);
+            Errors.ReprojectionError(estReal2, pts2Ref, KK, R12, tt0, out double mean_r2c, out double median_r2c, out List<double> _3x);
+            Errors.ReprojectionError(Errors.Matrixify(ptsReal), pts2Ref, KK, RR2, tt2, out double mean_r2e, out double median_r2e, out List<double> _5x);
         }
 
         [TestMethod]

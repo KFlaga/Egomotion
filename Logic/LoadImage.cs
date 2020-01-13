@@ -59,12 +59,12 @@ namespace Egomotion
                 {
                     Mat mat = new Mat();
                     videoCapture.Read(mat);
-                    if (mat.Rows == 0)
+                    if (mat != null && mat.Rows == 0)
                         return;
 
                     framesFromVideo.Add(mat);
 
-                    for (int p = 0; p < 9; p++)
+                    for (int p = 0; p < 4; p++)
                     {
                         videoCapture.Read(mat);
                     }
