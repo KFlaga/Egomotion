@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Egomotion
 {
-    public class MacthingResult
+    public class MatchingResult
     {
         VectorOfPointF lps;
         VectorOfPointF rps;
@@ -40,10 +40,12 @@ namespace Egomotion
         public MKeyPoint[] LeftKps { get; set; }
         public MKeyPoint[] RightKps { get; set; }
         public VectorOfDMatch Matches { get; set; }
+        public Mat LeftDescriptors { get; set; }
+        public Mat RightDescriptors { get; set; }
 
         // For convience
-        public List<PointF> LeftPointsList { get; set; }
-        public List<PointF> RightPointsList { get; set; }
+        public List<PointF> LeftPointsList { get; private set; }
+        public List<PointF> RightPointsList { get; private set; }
     }
 
     public static class MatchImagePair
@@ -59,8 +61,13 @@ namespace Egomotion
 
         public static VectorOfDMatch FindMatches(MKeyPoint[]  kps1, MKeyPoint[] kps2, Mat desc1, Mat desc2, DistanceType distanceType, double maxDistance)
         {
-            var res = MatchClosePoints.Match(kps1, kps2, desc1, desc2, distanceType, maxDistance);
-            return new VectorOfDMatch(res.ToArray());
+        //    var res = MatchClosePoints.Match(kps1, kps2, desc1, desc2, distanceType, maxDistance);
+        //    return new VectorOfDMatch(res.ToArray());
+
+            VectorOfDMatch matches = new VectorOfDMatch();
+            BFMatcher bf = new BFMatcher(distanceType, true);
+            bf.Match(desc1, desc2, matches);
+            return matches;
         }
 
         public static void MacthesToPointLists(IEnumerable<MDMatch> sortedMatches, MKeyPoint[] kp1, MKeyPoint[] kp2,
@@ -78,24 +85,34 @@ namespace Egomotion
             }
         }
 
-        public static MacthingResult Match(Mat left, Mat right, Feature2D detector, Feature2D descriptor, DistanceType distanceType, double maxDistance)
+        public static MatchingResult Match(Mat left, Mat right, Feature2D detector, Feature2D descriptor, DistanceType distanceType, double maxDistance)
         {
             FindFeatures(left, detector, descriptor, out MKeyPoint[] kps1, out Mat desc1);
             FindFeatures(right, detector, descriptor, out MKeyPoint[] kps2, out Mat desc2);
-
+            return Match(kps1, desc1, kps2, desc2, distanceType, maxDistance);
+        }
+        public static MatchingResult Match(MKeyPoint[] kps1, Mat desc1, MKeyPoint[] kps2, Mat desc2, DistanceType distanceType, double maxDistance)
+        {
             var matches = FindMatches(kps1, kps2, desc1, desc2, distanceType, maxDistance);
 
-            var sortedMatches = matches.ToArray().OrderBy((x) => x.Distance);
+            var sortedMatches = matches.ToArray().Where((x) =>
+            {
+                double dx = kps1[x.QueryIdx].Point.X - kps2[x.TrainIdx].Point.X;
+                double dy = kps1[x.QueryIdx].Point.Y - kps2[x.TrainIdx].Point.Y;
+                return dx * dx + dy * dy < maxDistance * maxDistance;
+            }).OrderBy((x) => x.Distance);
             MacthesToPointLists(sortedMatches, kps1, kps2, out VectorOfPointF leftPoints, out VectorOfPointF rightPoints, out List<double> distances);
 
-            return new MacthingResult()
+            return new MatchingResult()
             {
                 LeftPoints = leftPoints,
                 RightPoints = rightPoints,
                 LeftKps = kps1,
                 RightKps = kps2,
                 Matches = new VectorOfDMatch(sortedMatches.ToArray()),
-                Distances = distances
+                Distances = distances,
+                LeftDescriptors = desc1,
+                RightDescriptors = desc2
             };
         }
     }

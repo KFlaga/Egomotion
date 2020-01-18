@@ -47,14 +47,24 @@ namespace Egomotion
                 totalRotation[2, 2] = 1;
                 totalTranslation = new Image<Arthmetic, double>(1, 3);
 
+                features = new Dictionary<int, MatchingResult>();
+
                 Dispatcher.BeginInvoke((Action)(() =>
                 {
                     frameProgression.Minimum = 0;
                     frameProgression.Maximum = frames.Count;
                     frameCountLabel.Content = frames.Count;
+
+                    if(frames.Count > 0)
+                        videoViewer.Source = ImageLoader.ImageSourceForBitmap(frames[0].Bitmap);
                 }));
 
-                UdpateFrame(0);
+                scaler = new ScaleBy3dPointsMatch()
+                {
+                    K = K,
+                };
+
+                currentFrame = 0;
             }
         }
         public int FramesPerSecond
@@ -80,6 +90,14 @@ namespace Egomotion
         public double TakeBest { get; set; } = 50.0;
         public int MaxPairsForK { get; set; } = 50;
         public int Step { get; set; } = 4;
+
+        public double MaxDistance(Mat frame)
+        {
+            return Math.Max(10.0, 0.05 * (frame.Rows + frame.Cols));
+        }
+
+        ScaleBy3dPointsMatch scaler = new ScaleBy3dPointsMatch();
+        Dictionary<int, MatchingResult> features = new Dictionary<int, MatchingResult>();
 
         public MyEgoPlayer()
         {
@@ -149,8 +167,35 @@ namespace Egomotion
                     var mat = frame.ToImage<Bgr, byte>();
                     var mat2 = frame2.ToImage<Bgr, byte>();
 
-                    double maxDistance = Math.Max(10.0, 0.05 * (frame.Rows + frame.Cols));
-                    OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, Detector, Descriptor, DistanceType, maxDistance, K);
+                    double maxDistance = MaxDistance(frame);
+
+                    Func<int, int, MatchingResult> matcher = (i1, i2) =>
+                    {
+                        if (!features.TryGetValue(i1, out var features1))
+                        {
+                            MatchImagePair.FindFeatures(frames[i1], Detector, Descriptor, out MKeyPoint[] kps1, out Mat desc1);
+                            features1 = new MatchingResult()
+                            {
+                                LeftKps = kps1,
+                                LeftDescriptors = desc1
+                            };
+                        }
+
+                        if (!features.TryGetValue(i2, out var features2))
+                        {
+                            MatchImagePair.FindFeatures(frames[i2], Detector, Descriptor, out MKeyPoint[] kps2, out Mat desc2);
+                            features2 = new MatchingResult()
+                            {
+                                LeftKps = kps2,
+                                LeftDescriptors = desc2
+                            };
+                        }
+
+                        return MatchImagePair.Match(features1.LeftKps, features1.LeftDescriptors, features2.LeftKps, features2.LeftDescriptors, DistanceType, maxDistance);
+                    };
+
+                    OdometerFrame odometerFrame = scaler.NextFrame(n, n + Step, matcher);
+                    // OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame(mat.Mat, mat2.Mat, Detector, Descriptor, DistanceType, maxDistance, K);
                     if (odometerFrame != null)
                     {
                         videoViewer.Source = ImageLoader.ImageSourceForBitmap(frame.Bitmap); 

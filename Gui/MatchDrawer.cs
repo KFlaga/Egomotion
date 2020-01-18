@@ -13,7 +13,7 @@ namespace Egomotion
 {
     public class MatchDrawer
     {
-        public static void DrawFeatures(Mat left, Mat right, MacthingResult match, double takeBest, ImageViewer macthedView)
+        public static void DrawFeatures(Mat left, Mat right, MatchingResult match, double takeBest, ImageViewer macthedView)
         {
             Mat matchesImage = new Mat();
             VectorOfVectorOfDMatch matches2 = new VectorOfVectorOfDMatch();

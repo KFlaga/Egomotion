@@ -169,7 +169,7 @@ namespace Egomotion
            //     try
            //     {
                     double maxDistance = 20.0;
-                    OdometerFrame odometerFrame = FindTransformation.GetOdometerFrame3(mat.Mat, mat2.Mat, mat3.Mat, 
+                    OdometerFrame odometerFrame = ThreeViews.GetOdometerFrame3(mat.Mat, mat2.Mat, mat3.Mat, 
                         lastScale, out double thisScale,
                         Detector, Descriptor, DistanceType, maxDistance, K);
                     if (odometerFrame != null)

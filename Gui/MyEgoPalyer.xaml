@@ -39,7 +39,7 @@
                     <Label x:Name="frameCurrentLabel" Width="60"/>
                     <Label>/</Label>
                     <Label x:Name="frameCountLabel" Width="60"/>
-                    <Slider x:Name="frameProgression" ValueChanged="FrameProgression_ValueChanged" MinWidth="100" VerticalAlignment="Center"  Margin="5, 0, 0, 0"/>
+                    <Slider x:Name="frameProgression" ValueChanged="FrameProgression_ValueChanged" IsEnabled="False" MinWidth="100" VerticalAlignment="Center"  Margin="5, 0, 0, 0"/>
                     <Label>Per sec</Label>
                     <Label x:Name="framePerSecLabel" Width="50"/>
                     <Slider x:Name="framePerSecSlider" ValueChanged="FramePerSecSlider_ValueChanged" MinWidth="100" VerticalAlignment="Center"  Margin="5, 0, 0, 0" Minimum="1" Maximum="100"/>

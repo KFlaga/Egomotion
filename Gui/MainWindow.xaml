@@ -67,7 +67,7 @@
             </ScrollViewer>
         </TabItem>
         <TabItem Header="calibration">
-            <local:UserControl1/>
+            <local:Calibrator/>
         </TabItem>
         <TabItem Header="Video">
             <ScrollViewer>

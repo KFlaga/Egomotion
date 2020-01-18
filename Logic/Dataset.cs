@@ -111,8 +111,6 @@ namespace Egomotion
                     TimeDiff = interval,
                     Translation = translation,
                     Rotation = euler,
-                    Velocity = null,
-                    AngularVelocity = null,
                     RotationMatrix = rotationMatrix
                 };
 

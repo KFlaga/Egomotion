@@ -1,6 +1,7 @@
 ﻿using Egomotion;
 using Emgu.CV;
 using Emgu.CV.Util;
+using MathNet.Numerics.Optimization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -86,9 +87,9 @@ namespace Tests
             });
 
             C2 = new Image<Arthmetic, double>(new double[,,] {
-                { {6.0}} ,
-                { {6.0}} ,
-                { {-3.0}} ,
+                { {16.0}} ,
+                { {16.0}} ,
+                { {-13.0}} ,
             });
 
             //C2 = new Image<Arthmetic, double>(new double[,,] {
@@ -98,9 +99,9 @@ namespace Tests
             //});
 
             C3 = new Image<Arthmetic, double>(new double[,,] {
-                { {30.0}} ,
-                { {20.0}} ,
-                { {-30.0}} ,
+                { {40.0}} ,
+                { {-20.0}} ,
+                { {15.0}} ,
             });
 
             C4 = new Image<Arthmetic, double>(new double[,,] {
@@ -110,10 +111,10 @@ namespace Tests
             });
 
             R1 = I();
-            R12 = Rx(5.0).Multiply(Rz(5.0));
-            R13 = Rz(25.0);
+            R12 = Rx(0.0).Multiply(Rz(5.0));
+            R13 = Rz(10.0);
             R14 = Rz(15.0);
-            R23 = Rz(15.0);
+            R23 = Rz(5.0);
             R24 = Rz(5.0);
             R34 = Rz(-10.0);
 
@@ -124,9 +125,9 @@ namespace Tests
             C23 = R12.Multiply(C3.Sub(C2));
             C24 = R12.Multiply(C4.Sub(C2));
             C34 = C4.Sub(C3);
-            T23 = R23.Multiply(C23);
-            T24 = R24.Multiply(C24);
-            T34 = R34.Multiply(C34);
+            T23 = R23.Multiply(C23).Mul(-1);
+            T24 = R24.Multiply(C24).Mul(-1);
+            T34 = R34.Multiply(C34).Mul(-1);
 
             P1 = new Image<Arthmetic, double>(new double[,,] {
                 { {1}, {0}, {0}, {0} } ,
@@ -182,7 +183,7 @@ namespace Tests
                 pts2.Add(i2);
             }
 
-            MacthingResult match = new MacthingResult()
+            MatchingResult match = new MatchingResult()
             {
                 LeftPoints = new VectorOfPointF(pts1.ToArray()),
                 RightPoints = new VectorOfPointF(pts2.ToArray()),
@@ -213,12 +214,15 @@ namespace Tests
             List<Image<Arthmetic, double>> ptsReal = new List<Image<Arthmetic, double>>();
             List<PointF> pts1 = new List<PointF>();
             List<PointF> pts2 = new List<PointF>();
+            List<PointF> pts3 = new List<PointF>();
             List<PointF> pts1Ref = new List<PointF>();
             List<PointF> pts2Ref = new List<PointF>();
+            List<PointF> pts3Ref = new List<PointF>();
 
             Random rand = new Random(1003);
             double stddev = 3;
-            for (int i = 0; i < 100; ++i)
+            int pointsCount = 100;
+            for (int i = 0; i < pointsCount; ++i)
             {
                 var real = new Image<Arthmetic, double>(new double[,,] {
                     { {rand.Next(100, 200)}} ,
@@ -237,6 +241,11 @@ namespace Tests
                 pts2Ref.Add(i2);
                 i2 = new PointF(i2.X + Noise(stddev, rand), i2.Y + Noise(stddev, rand));
                 pts2.Add(i2);
+
+                var i3 = P3.Multiply(real).ToPointF();
+                pts3Ref.Add(i3);
+                i3 = new PointF(i3.X + Noise(stddev, rand), i3.Y + Noise(stddev, rand));
+                pts3.Add(i3);
             }
 
             double rangeLx = pts1.Max((x) => x.X) - pts1.Min((x) => x.X);
@@ -246,80 +255,145 @@ namespace Tests
 
             var pts1_n = new List<PointF>(pts1);
             var pts2_n = new List<PointF>(pts2);
-            FindTransformation.NormalizePoints2d(pts1_n, out Image<Arthmetic, double> NL);
-            FindTransformation.NormalizePoints2d(pts2_n, out Image<Arthmetic, double> NR);
+            var pts3_n = new List<PointF>(pts3);
+            FindTransformation.NormalizePoints2d(pts1_n, out Image<Arthmetic, double> N1);
+            FindTransformation.NormalizePoints2d(pts2_n, out Image<Arthmetic, double> N2);
+            FindTransformation.NormalizePoints2d(pts3_n, out Image<Arthmetic, double> N3);
 
-            MacthingResult match = new MacthingResult()
-            {
-                LeftPoints = new VectorOfPointF(pts1_n.ToArray()),
-                RightPoints = new VectorOfPointF(pts2_n.ToArray()),
-            };
-
-            var F = ComputeMatrix.F(match.LeftPoints, match.RightPoints);
+            var F = ComputeMatrix.F(new VectorOfPointF(pts1_n.ToArray()), new VectorOfPointF(pts2_n.ToArray()));
+            var F23 = ComputeMatrix.F(new VectorOfPointF(pts2_n.ToArray()), new VectorOfPointF(pts3_n.ToArray()));
 
             // F is normalized - lets denormalize it
-            F = NR.T().Multiply(F).Multiply(NL);
+            F = N2.T().Multiply(F).Multiply(N1);
+            F23 = N3.T().Multiply(F23).Multiply(N2);
 
             var E = ComputeMatrix.E(F, K);
+            var E23 = ComputeMatrix.E(F23, K);
 
             var svd = new Svd(E);
+            var svd23 = new Svd(E23);
 
-            FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, K, E, out var RR, out var TT, out Image<Arthmetic, double> estReal);
+            FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, K, E, out var RR, out var TT, out Image<Arthmetic, double> estReal_);
+            FindTransformation.DecomposeToRTAndTriangulate(pts2, pts3, K, E23, out var RR23, out var TT23, out Image<Arthmetic, double> estReal23_);
 
             var rr0 = RotationConverter.MatrixToEulerXYZ(R12);
             var rr1 = RotationConverter.MatrixToEulerXYZ(RR);
 
             var tt0 = T12.Mul(1 / T12.Norm);
-            var tt1 = TT.Mul(1 / TT.Norm);
+            var tt1 = TT.Mul(1 / TT.Norm).Mul(T12[0, 0] * TT[0, 0] < 0 ? -1 : 1);
+            var tt1_23 = TT23.Mul(1 / TT23.Norm).Mul(T23[0, 0] * TT23[0, 0] < 0 ? -1 : 1);
 
-            Errors.TraingulationError(ptsReal, estReal, out double mean1, out double median1, out List<double> errors1);
-            Errors.ReprojectionError(estReal, pts2, K, RR, tt1, out double mean_r1a, out double median_r1a, out List<double> _1);
-            Errors.ReprojectionError(estReal, pts2Ref, K, RR, tt1, out double mean_r1b, out double median_r1b, out List<double> _2);
-            Errors.ReprojectionError(estReal, pts2Ref, K, R12, tt0, out double mean_r1c, out double median_r1c, out List<double> _3);
-            Errors.ReprojectionError(Errors.Matrixify(ptsReal), pts2Ref, K, RR, tt1, out double mean_r1e, out double median_r1e, out List<double> _5);
+            FindTransformation.TriangulateChieral(pts1, pts2, K, RR, tt1, out var estReal12);
+            FindTransformation.TriangulateChieral(pts2, pts3, K, RR23, tt1_23, out var estReal23);
+
+            RansacScaleEstimation ransacModel = new RansacScaleEstimation(estReal12, estReal23, RR, ComputeMatrix.Center(tt1, RR));
+
+            int sampleSize = (int)(0.1 * pointsCount);
+            int minGoodPoints = (int)(0.2 * pointsCount);
+            int maxIterations = 1000;
+            double meanRefPointSize = ScaleBy3dPointsMatch.GetMeanSize(estReal12);
+            double threshold = meanRefPointSize * meanRefPointSize * 0.1;
+            var result = RANSAC.ProcessMostInliers(ransacModel, maxIterations, sampleSize, minGoodPoints, threshold);
+            double scale = (double)result.BestModel;
+
+            var estRealRef23To12 = ScaleBy3dPointsMatch.TransfromBack3dPoints(RR, tt1, estReal23, scale);
+
+            // TODO: compute below only on inliers
+            Image<Arthmetic, double> inliersOnly12 = new Image<Arthmetic, double>(result.Inliers.Count, 4);
+            Image<Arthmetic, double> inliersOnly12Ref = new Image<Arthmetic, double>(result.Inliers.Count, 4);
+            Image<Arthmetic, double> inliersOnly23 = new Image<Arthmetic, double>(result.Inliers.Count, 4);
+            for (int i = 0; i < result.Inliers.Count; ++i)
+            {
+                int k = result.Inliers[i];
+                for(int j = 0; j < 4; ++j)
+                {
+                    inliersOnly12[j, i] = estReal12[j, k];
+                    inliersOnly12Ref[j, i] = ptsReal[k][j, 0];
+                    inliersOnly23[j, i] = estRealRef23To12[j, k];
+                }
+            }
+
+
+            var ptsRealM = Errors.Matrixify(ptsReal);
+            Errors.TraingulationError(ptsRealM, estReal12, out double mean1x, out double median1x, out List<double> errors1x);
+            Errors.TraingulationError(ptsRealM, estRealRef23To12, out double mean1z, out double median1z, out List<double> errors1z);
+
+            Errors.TraingulationError(inliersOnly12Ref, inliersOnly12, out double mean_in1, out double median_in1, out List<double> errors_in1);
+            Errors.TraingulationError(inliersOnly12Ref, inliersOnly23, out double mean_in2, out double median_in2, out List<double> errors_in2);
+            Errors.TraingulationError(inliersOnly12, inliersOnly23, out double mean_in3, out double median_in3, out List<double> errors_in3);
+
+            var ptsReal23M = ForwardProject3dPoints(ptsRealM, R12, C2);
+            Errors.TraingulationError(ptsReal23M, estReal23, out double mean1h, out double median1h, out List<double> errors1h);
             
+            var estC2 = ComputeMatrix.Center(tt1, RR);
+            var ptsEst23M = ForwardProject3dPoints(estReal12, RR, estC2);
+            Errors.TraingulationError(ptsEst23M, estReal23, out double mean1t, out double median1t, out List<double> errors1t);
+
+            int dummy = 0;
+
+            //Errors.TraingulationError(ptsReal, estReal, out double mean1, out double median1, out List<double> errors1);
+            //Errors.ReprojectionError(estReal, pts2, K, RR, tt1, out double mean_r1a, out double median_r1a, out List<double> _1);
+            //Errors.ReprojectionError(estReal, pts2Ref, K, RR, tt1, out double mean_r1b, out double median_r1b, out List<double> _2);
+            //Errors.ReprojectionError(estReal, pts2Ref, K, R12, tt0, out double mean_r1c, out double median_r1c, out List<double> _3);
+            //Errors.ReprojectionError(Errors.Matrixify(ptsReal), pts2Ref, K, RR, tt1, out double mean_r1e, out double median_r1e, out List<double> _5);
+
             var H1 = FindTransformation.EstimateHomography(pts1, pts2, K);
             var H2 = FindTransformation.EstimateHomography(pts1Ref, pts2Ref, K);
             var hrr1 = RotationConverter.MatrixToEulerXYZ(H1);
             var hrr2 = RotationConverter.MatrixToEulerXYZ(H2);
-            var zeroT = new Image<Arthmetic, double>(1, 3);
-            
-            var H3 = RotationConverter.EulerXYZToMatrix(hrr1);
-            var hrr3 = RotationConverter.MatrixToEulerXYZ(H1);
+            //var zeroT = new Image<Arthmetic, double>(1, 3);
 
-            var svdH = new Svd(H1);
+            //var H3 = RotationConverter.EulerXYZToMatrix(hrr1);
+            //var hrr3 = RotationConverter.MatrixToEulerXYZ(H1);
+
+            //var svdH = new Svd(H1);
 
             bool isRotation = FindTransformation.IsPureRotation(H1);
 
-            Errors.ReprojectionError2d(pts1Ref, pts2Ref, K, H2, out double mean_h2, out double median_h2, out var err_h2);
-            Errors.ReprojectionError2d(pts1, pts2, K, H1, out double mean_h1, out double median_h1, out var err_h1);
-            Errors.ReprojectionError2d(pts1, pts2, K, H3, out double mean_h3, out double median_h3, out var err_h3);
+            int dummy2 = 0;
 
-            Errors.ReprojectionError2dWithT(pts1, pts2, K, H1, zeroT, out double scale1, out double mean_h1a, out double median_h1a, out var err_h1a);
-            Errors.ReprojectionError2dWithT(pts1, pts2, K, H3, zeroT, out double scale1x, out double mean_h1ax, out double median_h1ax, out var err_h1ax);
-            //  Errors.ReprojectionError2dWithT(pts1, pts2, K, R12, tt0, out double scale2, out double mean_h1b, out double median_h1b, out var err_h1b);
-            Errors.ReprojectionError2dWithT(pts1, pts2, K, RR, tt1, out double scale3, out double mean_h1c, out double median_h1c, out var err_h1c);
-            Errors.ReprojectionError2dWithT(pts1, pts2, K, R12, tt1, out double scale5, out double mean_h1c1, out double median_h1c1, out var err_h1c1);
-            Errors.ReprojectionError2dWithT(pts1Ref, pts2Ref, K, R12, tt0, out double scale6, out double mean_h1c2, out double median_h1c2, out var err_h1c2);
-            Errors.ReprojectionError2dWithT(pts1, pts2, K, H1, tt1, out double scale4, out double mean_h1d, out double median_h1d, out var err_h1d);
+            //Errors.ReprojectionError2d(pts1Ref, pts2Ref, K, H2, out double mean_h2, out double median_h2, out var err_h2);
+            //Errors.ReprojectionError2d(pts1, pts2, K, H1, out double mean_h1, out double median_h1, out var err_h1);
+            //Errors.ReprojectionError2d(pts1, pts2, K, H3, out double mean_h3, out double median_h3, out var err_h3);
 
-            var KK = EstimateCameraFromImagePair.K(F, 600, 500);
-            var EE = ComputeMatrix.E(F, KK);
-            var svd2 = new Svd(EE);
+            //Errors.ReprojectionError2dWithT(pts1, pts2, K, H1, zeroT, out double scale1, out double mean_h1a, out double median_h1a, out var err_h1a);
+            //Errors.ReprojectionError2dWithT(pts1, pts2, K, H3, zeroT, out double scale1x, out double mean_h1ax, out double median_h1ax, out var err_h1ax);
+            ////  Errors.ReprojectionError2dWithT(pts1, pts2, K, R12, tt0, out double scale2, out double mean_h1b, out double median_h1b, out var err_h1b);
+            //Errors.ReprojectionError2dWithT(pts1, pts2, K, RR, tt1, out double scale3, out double mean_h1c, out double median_h1c, out var err_h1c);
+            //Errors.ReprojectionError2dWithT(pts1, pts2, K, R12, tt1, out double scale5, out double mean_h1c1, out double median_h1c1, out var err_h1c1);
+            //Errors.ReprojectionError2dWithT(pts1Ref, pts2Ref, K, R12, tt0, out double scale6, out double mean_h1c2, out double median_h1c2, out var err_h1c2);
+            //Errors.ReprojectionError2dWithT(pts1, pts2, K, H1, tt1, out double scale4, out double mean_h1d, out double median_h1d, out var err_h1d);
 
-            FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, KK, EE, out var RR2, out var TT2, out Image<Arthmetic, double> estReal2);
-            var tt2 = TT2.Mul(1 / TT2.Norm);
-            var rr2 = RotationConverter.MatrixToEulerXYZ(RR2);
+            //var KK = EstimateCameraFromImagePair.K(F, 600, 500);
+            //var EE = ComputeMatrix.E(F, KK);
+            //var svd2 = new Svd(EE);
 
-            Errors.TraingulationError(ptsReal, estReal2, out double mean2, out double median2, out List<double> errors2);
-            Errors.ReprojectionError(estReal2, pts2, KK, RR2, tt2, out double mean_r2a, out double median_r2a, out List<double> _1x);
-            Errors.ReprojectionError(estReal2, pts2Ref, KK, RR2, tt2, out double mean_r2b, out double median_r2b, out List<double> _2x);
-            Errors.ReprojectionError(estReal2, pts2Ref, KK, R12, tt0, out double mean_r2c, out double median_r2c, out List<double> _3x);
-            Errors.ReprojectionError(Errors.Matrixify(ptsReal), pts2Ref, KK, RR2, tt2, out double mean_r2e, out double median_r2e, out List<double> _5x);
+            //FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, KK, EE, out var RR2, out var TT2, out Image<Arthmetic, double> estReal2);
+            //var tt2 = TT2.Mul(1 / TT2.Norm);
+            //var rr2 = RotationConverter.MatrixToEulerXYZ(RR2);
+
+            //Errors.TraingulationError(ptsReal, estReal2, out double mean2, out double median2, out List<double> errors2);
+            //Errors.ReprojectionError(estReal2, pts2, KK, RR2, tt2, out double mean_r2a, out double median_r2a, out List<double> _1x);
+            //Errors.ReprojectionError(estReal2, pts2Ref, KK, RR2, tt2, out double mean_r2b, out double median_r2b, out List<double> _2x);
+            //Errors.ReprojectionError(estReal2, pts2Ref, KK, R12, tt0, out double mean_r2c, out double median_r2c, out List<double> _3x);
+            //Errors.ReprojectionError(Errors.Matrixify(ptsReal), pts2Ref, KK, RR2, tt2, out double mean_r2e, out double median_r2e, out List<double> _5x);
+        }
+
+        private Image<Arthmetic, double> ForwardProject3dPoints(Image<Arthmetic, double> pts, Image<Arthmetic, double> R, Image<Arthmetic, double> C)
+        {
+            var res = pts.Clone();
+            for (int i = 0; i < pts.Cols; ++i)
+            {
+                res[0, i] = pts[0, i] - C[0, 0];
+                res[1, i] = pts[1, i] - C[1, 0];
+                res[2, i] = pts[2, i] - C[2, 0];
+            }
+            res = Errors.PutRTo4x4(R).Multiply(res);
+            return res;
         }
 
         [TestMethod]
-        public void TestIdealTranslaionScaling()
+        public void TestIdealTranslaionScaling3()
         {
             List<Image<Arthmetic, double>> ptsReal = new List<Image<Arthmetic, double>>();
             List<PointF> pts1 = new List<PointF>();
@@ -371,8 +445,8 @@ namespace Tests
             List<Image<Arthmetic, double>> Rs2 = new List<Image<Arthmetic, double>>() { R23, R24 };
             List<Image<Arthmetic, double>> Ts2 = new List<Image<Arthmetic, double>>() { T23, T24 };
             
-            var centers123 = FindTransformation.ComputeCameraCenter3(K, Rs1, Ts1, match13);
-            var centers234 = FindTransformation.ComputeCameraCenter3(K, Rs2, Ts2, match24);
+            var centers123 = ThreeViews.ComputeCameraCenter3(K, Rs1, Ts1, match13);
+            var centers234 = ThreeViews.ComputeCameraCenter3(K, Rs2, Ts2, match24);
 
             var C12_1_abs = centers123.C12;
             var C13_1_abs = centers123.C13;

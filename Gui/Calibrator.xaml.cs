@@ -22,14 +22,14 @@ namespace Egomotion
     /// <summary>
     /// Logika interakcji dla klasy UserControl1.xaml
     /// </summary>
-    public partial class UserControl1 : UserControl
+    public partial class Calibrator : UserControl
     {
         List<Emgu.CV.Image<Emgu.CV.Structure.Bgr, Byte>> imageList;
         List<System.Drawing.PointF[]> allPonits;
         Mat camMat;
         Emgu.CV.Util.VectorOfFloat distCoeffs;
 
-        public UserControl1()
+        public Calibrator()
         {
             InitializeComponent();
         }

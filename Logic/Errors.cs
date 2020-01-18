@@ -39,19 +39,19 @@ namespace Egomotion
         }
 
         public static void TraingulationError(
-            List<Image<Arthmetic, double>> ptsReal, Image<Arthmetic, double> estReal,
+            Image<Arthmetic, double> ptsReal, Image<Arthmetic, double> estReal,
             out double mean, out double median, out List<double> errors)
         {
             errors = new List<double>();
-            for (int i = 0; i < ptsReal.Count; ++i)
+            for (int i = 0; i < ptsReal.Cols; ++i)
             {
                 var estPoint = new Image<Arthmetic, double>(new double[,,]
                 {
-                    {{estReal[0, i]}}, {{estReal[1, i]}}, {{estReal[2, i]}},
+                    {{estReal[0, i] / estReal[3, i]}}, {{estReal[1, i] / estReal[3, i]}}, {{estReal[2, i] / estReal[3, i]}},
                 });
                 var realPoint = new Image<Arthmetic, double>(new double[,,]
                 {
-                    {{ptsReal[i][0, 0]}}, {{ptsReal[i][1, 0]}}, {{ptsReal[i][2, 0]}},
+                    {{ptsReal[0, i] / ptsReal[3, i]}}, {{ptsReal[1, i] / ptsReal[3, i]}}, {{ptsReal[2, i] / ptsReal[3, i]}},
                 });
 
                 var p1 = estPoint.Mul(1 / estPoint.Norm);
@@ -93,59 +93,7 @@ namespace Egomotion
             mean = errors.Sum() / errors.Count;
             median = errors[errors.Count / 2];
         }
-
-        public static void ReprojectionError2dWithT(
-            List<PointF> left, List<PointF> right,
-            Image<Arthmetic, double> K, Image<Arthmetic, double> R, Image<Arthmetic, double> t,
-            out double scale,
-            out double mean, out double median, out List<double> errors)
-        {
-            var Kinv = new Image<Arthmetic, double>(3, 3);
-            CvInvoke.Invert(K, Kinv, Emgu.CV.CvEnum.DecompMethod.Svd);
-
-            var LP = Kinv.Multiply(Matrixify(left));
-            var RP = Kinv.Multiply(Matrixify(right));
-            
-            Rep2dTError errorFunc = new Rep2dTError()
-            {
-                LP = LP,
-                RP = RP,
-                t = t,
-                R = R
-            };
-
-            if(t.Norm < 1e-8)
-            {
-                scale = 0.0;
-            }
-            else
-            {
-                GoldenSectionMinimizer minimizer = new GoldenSectionMinimizer(1e-3);
-                try
-                {
-                    var result = minimizer.FindMinimum(errorFunc, 0.0, 1e9);
-                    scale = result.MinimizingPoint;
-                }
-                catch (Exception)
-                {
-                    scale = 0.0;
-                }
-            }
-            
-            errors = new List<double>();
-            for (int i = 0; i < left.Count; ++i)
-            {
-                errors.Add(errorFunc.Error(scale, i));
-            }
-            mean = errors.Sum() / errors.Count;
-            median = errors[errors.Count / 2];
-
-            if(scale != 0.0)
-            {
-                scale = 1 / scale;
-            }
-        }
-
+        
         public static Image<Arthmetic, double> Matrixify(List<Image<Arthmetic, double>> pts)
         {
             Image<Arthmetic, double> X = new Image<Arthmetic, double>(pts.Count, pts[0].Rows);
@@ -159,79 +107,57 @@ namespace Egomotion
             return X;
         }
 
-        public static Image<Arthmetic, double> Matrixify(List<PointF> pts)
+        public static Image<Arthmetic, double> Matrixify(IEnumerable<PointF> pts)
         {
-            Image<Arthmetic, double> X = new Image<Arthmetic, double>(pts.Count, 3);
-            for (int i = 0; i < pts.Count; ++i)
+            Image<Arthmetic, double> X = new Image<Arthmetic, double>(pts.Count(), 3);
+            int i = 0;
+            foreach(PointF p in pts)
             {
-                X[0, i] = pts[i].X;
-                X[1, i] = pts[i].Y;
+                X[0, i] = p.X;
+                X[1, i] = p.Y;
                 X[2, i] = 1;
+                ++i;
             }
             return X;
         }
 
-        private class Rep2dTError : IScalarObjectiveFunction
+        public static Image<Arthmetic, double> PutRTo4x4(Image<Arthmetic, double> R)
         {
-            public bool IsDerivativeSupported => false;
-            public bool IsSecondDerivativeSupported => false;
-
-            public Image<Arthmetic, double> LP { get; set; }
-            public Image<Arthmetic, double> RP { get; set; }
-
-            public Image<Arthmetic, double> t { get; set; }
-            public Image<Arthmetic, double> R { get; set; }
-
-            public class Evaluator : IScalarObjectiveFunctionEvaluation
+            Image<Arthmetic, double> X = new Image<Arthmetic, double>(4, 4);
+            for(int i = 0; i < 3; ++i)
             {
-                public double Point { get; set; }
-                public double Value { get; set; }
-                public double Derivative { get; set; }
-                public double SecondDerivative { get; set; }
-            }
-
-            public IScalarObjectiveFunctionEvaluation Evaluate(double point)
-            {
-                return new Evaluator()
+                for(int j = 0; j < 3; ++j)
                 {
-                    Point = point,
-                    Value = Error(point)
-                };
-            }
-
-            public double Error(double scale)
-            {
-                if (scale < 0.0)
-                    return LP.Cols * 10000.0;
-
-                double e = 0.0;
-                for(int i = 0; i < LP.Cols; ++i)
-                {
-                    e += Error(scale, i);
+                    X[i, j] = R[i, j];
                 }
-                return e;
             }
+            X[3, 3] = 1.0;
+            return X;
+        }
 
-            public double Error(double scale, int index)
+        public static List<Image<Arthmetic, double>> Listify(Image<Arthmetic, double> pts, bool skipLast)
+        {
+            List<Image<Arthmetic, double>> X = new List<Image<Arthmetic, double>>(pts.Cols);
+            for (int i = 0; i < pts.Cols; ++i)
             {
-                double x1 = LP[0, index] / LP[2, index];
-                double y1 = LP[1, index] / LP[2, index];
-                double x2 = RP[0, index] / RP[2, index];
-                double y2 = RP[1, index] / RP[2, index];
-
-                double r1 = R[0, 0] * x1 + R[0, 1] * y1 + R[0, 2];
-                double r2 = R[1, 0] * x1 + R[1, 1] * y1 + R[1, 2];
-                double r3 = R[2, 0] * x1 + R[2, 1] * y1 + R[2, 2];
-
-                double Lx = r1 + scale * t[0, 0];
-                double Ly = r2 + scale * t[1, 0];
-                double Lz = r3 + scale * t[2, 0];
-
-                double x2e = Lx / Lz;
-                double y2e = Ly / Lz;
-
-                return Math.Sqrt((x2 - x2e) * (x2 - x2e) + (y2 - y2e) * (y2 - y2e));
+                if(skipLast)
+                {
+                    Image<Arthmetic, double> x = new Image<Arthmetic, double>(new double[,,]
+                    {
+                        {{ pts[0, i] / pts[3, i] }}, {{ pts[1, i] / pts[3, i] }}, {{ pts[2, i] / pts[3, i] }},
+                    });
+                    X.Add(x);
+                }
+                else
+                {
+                    Image<Arthmetic, double> x = new Image<Arthmetic, double>(new double[,,]
+                    {
+                        {{ pts[0, i] }}, {{ pts[1, i] }}, {{ pts[2, i] }}, {{ pts[3, i] }}
+                    });
+                    X.Add(x);
+                }
             }
+            return X;
         }
     }
 }

@@ -77,14 +77,16 @@
     <Compile Include="FileOp.cs" />
     <Compile Include="FindTransformation.cs" />
     <Compile Include="LoadImage.cs" />
-    <Compile Include="LocalCorrespondencesOdometer.cs" />
     <Compile Include="MatchClosePoints.cs" />
     <Compile Include="MatchImagePair.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RANSAC.cs" />
     <Compile Include="RotationConverter.cs" />
     <Compile Include="SaveAndLoad.cs" />
+    <Compile Include="ScaleBy3dPointsMatch.cs" />
     <Compile Include="Svd.cs" />
-    <Compile Include="VisualOdometer.cs" />
+    <Compile Include="ThreeViews.cs" />
+    <Compile Include="OdometerFrame.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -35,7 +35,7 @@ namespace Egomotion
             PrintMatricesInfo(E, K, R, t);
         }
 
-        private void DrawFeatures(Mat left, Mat right, MacthingResult match, double takeBest)
+        private void DrawFeatures(Mat left, Mat right, MatchingResult match, double takeBest)
         {
             MatchDrawer.DrawFeatures(left, right, match, takeBest, macthedView);
             MatchDrawer.DrawCricles(leftView, left, match.LeftKps);

@@ -13,19 +13,9 @@ namespace Egomotion
 {
     public static class MatchClosePoints
     {
-        public static Func<Item, Item, double> GetDistanceFunc(DistanceType distanceType)
+        public static Func<Item, Item, double> GetCostFunc(DistanceType distanceType)
         {
-            switch(distanceType)
-            {
-                case DistanceType.Hamming:
-                    return (row1, row2) => CvInvoke.Norm(row1.desc, row2.desc, (Emgu.CV.CvEnum.NormType)6);
-                case DistanceType.L2:
-                    return (row1, row2) => CvInvoke.Norm(row1.desc, row2.desc, (Emgu.CV.CvEnum.NormType)4);
-                case DistanceType.L1:
-                    return (row1, row2) => CvInvoke.Norm(row1.desc, row2.desc, (Emgu.CV.CvEnum.NormType)2);
-                default:
-                    return (row1, row2) => CvInvoke.Norm(row1.desc, row2.desc, (Emgu.CV.CvEnum.NormType)4);
-            }
+            return (row1, row2) => CvInvoke.Norm(row1.desc, row2.desc, (Emgu.CV.CvEnum.NormType)distanceType);
         }
 
         public struct Item
@@ -92,7 +82,7 @@ namespace Egomotion
             return points;
         }
 
-        public static int FindBestMatch(Item kp1, List<Item> kps2, Func<Item, Item, double> distance, double maxDistance = 20.0)
+        public static int FindBestMatch(Item kp1, List<Item> kps2, Func<Item, Item, double> costFunc, double maxDistance = 20.0)
         {
             int firstClose = LowerBound(kps2, kp1, new WithMaxDistance(maxDistance));
             if (firstClose < kps2.Count)
@@ -102,9 +92,10 @@ namespace Egomotion
                 double bestCost = 1e8;
                 while (Math.Abs(kp1.pos.X - kp2.pos.X) < maxDistance)
                 {
-                    if (GetDistance(kp1.pos, kp2.pos) < maxDistance * maxDistance)
+                    double d = GetDistance(kp1.pos, kp2.pos);
+                    if (d < maxDistance * maxDistance)
                     {
-                        double cost = distance(kp1, kp2);
+                        double cost = costFunc(kp1, kp2);
                         if (cost < bestCost)
                         {
                             bestCost = cost;
@@ -125,7 +116,7 @@ namespace Egomotion
         public static List<MDMatch> Match(MKeyPoint[] kpsQuery, MKeyPoint[] kpsTrain, Mat descQuery, Mat descTrain, DistanceType distanceType, double maxDistance = 20.0, bool crossCheck = true)
         {
             var matches = new List<MDMatch>(kpsTrain.Length / 2); 
-            var distance = GetDistanceFunc(distanceType);
+            var costFunc = GetCostFunc(distanceType);
             var limitDistance = new WithMaxDistance(maxDistance);
 
             var kps1 = SortByX(kpsQuery, descQuery);
@@ -134,13 +125,13 @@ namespace Egomotion
             for (int i = 0; i < kps1.Count; ++i)
             {
                 var kp1 = kps1[i];
-                int bestMatch = FindBestMatch(kp1, kps2, distance, maxDistance);
+                int bestMatch = FindBestMatch(kp1, kps2, costFunc, maxDistance);
                 if (bestMatch >= 0)
                 {
                     var kp2 = kps2[bestMatch];
                     if (crossCheck)
                     {
-                        int best2To1 = FindBestMatch(kp2, kps1, distance, maxDistance);
+                        int best2To1 = FindBestMatch(kp2, kps1, costFunc, maxDistance);
                         if(best2To1 < 0 || best2To1 >= kps1.Count || kps1[best2To1].index != kp1.index)
                         {
                             continue;
@@ -149,7 +140,7 @@ namespace Egomotion
 
                     matches.Add(new MDMatch()
                     {
-                        Distance = (float)distance(kp1, kp2),
+                        Distance = (float)costFunc(kp1, kp2),
                         ImgIdx = 0,
                         TrainIdx = kp2.index,
                         QueryIdx = kp1.index
