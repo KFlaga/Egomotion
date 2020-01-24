@@ -9,11 +9,40 @@
              d:DesignHeight="450" d:DesignWidth="800">
     <DockPanel>
         <WrapPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Background="AntiqueWhite">
+            <Label>Liczba punktów</Label>
+            <TextBox x:Name="pointCountInput" MinWidth="50">100</TextBox>
+            <Button x:Name="reseed" Click="Reseed_Click">
+                ReSeed
+            </Button>
             <Button x:Name="eigenRatioForKnownK" Click="EigenRatioForKnownK_Click">
                 Stosunek wartości własnych E dla znanego K
             </Button>
+            <Button x:Name="errorOfFComputation" Click="ErrorOfFComputation_Click">
+                Błąd wyznaczenia F
+            </Button>
             <Button x:Name="errorOfKComputation" Click="ErrorOfKComputation_Click">
-                Błąd wyznaczenia K z warunku E
+                Błąd wyznaczenia fx/fy z warunku E
+            </Button>
+            <Button x:Name="errorOfRComputation" Click="ErrorOfRComputation_Click">
+                Błąd wyznaczenia R z E dla Kref i Kest
+            </Button>
+            <Button x:Name="errorOfRComputation2" Click="ErrorOfRComputation2_Click">
+                Błąd wyznaczenia R z E dla różnych C
+            </Button>
+            <Button x:Name="errorOfTComputation" Click="ErrorOfTComputation_Click">
+                Błąd wyznaczenia t z E dla Kref i Kest
+            </Button>
+            <Button x:Name="errorOfTComputation2" Click="ErrorOfTComputation2_Click">
+                Błąd wyznaczenia t z E dla różnych C
+            </Button>
+            <Button x:Name="errorOfHComputation" Click="ErrorOfHComputation_Click">
+                Błąd wyznaczenia R z H dla różnych C
+            </Button>
+            <Button x:Name="errorOfHComputation2" Click="ErrorOfHComputation2_Click">
+                Stosunek wartości własnych H dla różnych C
+            </Button>
+            <Button x:Name="errorOfHComputation3" Click="ErrorOfHComputation3_Click">
+                Ochylenie od 1 wartości własnych H dla różnych C
             </Button>
         </WrapPanel>
         <oxy:PlotView x:Name="plot">

@@ -49,6 +49,7 @@ namespace Egomotion
             StrokeThickness = 1,
             Color = OxyColor.FromRgb(0, 0, 200)
         };
+        private LineSeries[] allSeries => new LineSeries[] { series1, series2, series3, series4 };
 
         void resetPlot()
         {
@@ -128,31 +129,51 @@ namespace Egomotion
 
             plot.Model = model;
 
+            ResetTestMatrices();
+            ResetPoints();
+        }
+
+        private void ResetTestMatrices()
+        {
+            if (!int.TryParse(pointCountInput.Text, out pointsCount) || pointsCount <= 8)
+            {
+                pointCountInput.Text = "100";
+                pointsCount = 100;
+            }
+
             K = new Image<Arthmetic, double>(new double[,,] {
                 { {fx}, {0}, {px} } ,
                 { {0}, {fy}, {py} } ,
                 { {0}, {0 }, {1 } } ,
             });
-            
+
             C2 = Utils.Vector(16, 16, -13);
             C3 = Utils.Vector(40, -20, 15);
 
-            R12 = Utils.Rx(0.0).Multiply(Utils.Rz(5.0));
+            R12 = Utils.Rx(5.0).Multiply(Utils.Rz(5.0));
             R13 = Utils.Rx(0.0).Multiply(Utils.Rz(10.0));
             R23 = R12.T().Multiply(R13);
-            
+
             C12 = C2.Clone();
             C23 = R12.Multiply(C3.Sub(C2));
 
             T12 = R12.Multiply(C2).Mul(-1);
             T13 = R13.Multiply(C3).Mul(-1);
             T23 = R23.Multiply(C23).Mul(-1);
+        }
 
+        private void ResetPoints()
+        {
             P1 = ComputeMatrix.Camera(K);
             P2 = ComputeMatrix.Camera(K, R12, C2);
             P3 = ComputeMatrix.Camera(K, R13, C3);
 
-            Random rand = new Random(1003);
+            ptsReal = new List<Image<Arthmetic, double>>();
+            pts1Ref = new List<PointF>();
+            pts2Ref = new List<PointF>();
+            pts3Ref = new List<PointF>();
+
+            Random rand = new Random(564073);
             for (int i = 0; i < pointsCount; ++i)
             {
                 var real = new Image<Arthmetic, double>(new double[,,] {
@@ -177,16 +198,17 @@ namespace Egomotion
             double rangeLy = pts1Ref.Max((x) => x.Y) - pts1Ref.Min((x) => x.Y);
             double rangeRx = pts2Ref.Max((x) => x.X) - pts2Ref.Min((x) => x.X);
             double rangeRy = pts2Ref.Max((x) => x.Y) - pts2Ref.Min((x) => x.Y);
-            pixelRange = 0.5 * (rangeLx + rangeLy + rangeRx + rangeRy);
+            pixelRange = 0.25 * (rangeLx + rangeLy + rangeRx + rangeRy);
         }
 
+        int seed = 564071;
         private void ApplyNoise(double stddev)
         {
             pts1 = new List<PointF>();
             pts2 = new List<PointF>();
             pts3 = new List<PointF>();
 
-            Random rand = new Random();
+            Random rand = new Random(seed);
             for (int i = 0; i < pointsCount; ++i)
             {
                 var real = ptsReal[i];
@@ -217,45 +239,302 @@ namespace Egomotion
             return (float)MathNet.Numerics.Distributions.Normal.Sample(rng, 0.0, stddev);
         }
 
-        void PlotInErrorFunction(Func<double, double> funcUnderTest)
+        public class PlotDefinition
         {
-            List<double> points = new List<double>();
-            double[] stddevs = new double[] { 0, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01 };
-            foreach(double s in stddevs)
+            public string YName;
+            public Func<double> Function;
+
+            public int CasesCount = 1;
+            public List<Action> PrepareCase;
+            public List<string> CasesNames;
+        }
+
+        void PlotFunctionForErrors(Func<double> funcUnderTest, string yName)
+        {
+            PlotFunctionForErrors(new PlotDefinition()
             {
-                double scaledDev = s * pixelRange;
-                points.Add(funcUnderTest(scaledDev));
+                Function = funcUnderTest,
+                YName = yName,
+                CasesCount = 1,
+                CasesNames = new List<string>() { "" },
+                PrepareCase = new List<Action>() { () => { } }
+            });
+        }
+
+        void PlotFunctionForErrors(PlotDefinition plotDef)
+        {
+            resetPlot();
+            double[] stddevs = new double[] { 0, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01 };
+
+            for (int i = 0; i < plotDef.CasesCount; ++i)
+            {
+                ResetTestMatrices();
+                ResetPoints();
+
+                plotDef.PrepareCase[i]();
+                allSeries[i].Title = plotDef.CasesNames[i];
+
+                List<double> points = new List<double>();
+                foreach (double s in stddevs)
+                {
+                    double scaledDev = s * pixelRange;
+                    ApplyNoise(scaledDev);
+                    points.Add(plotDef.Function());
+                }
+
+                for (int k = 0; k < stddevs.Length; ++k)
+                {
+                    allSeries[i].Points.Add(new DataPoint(stddevs[k] * 100.0, points[k]));
+                }
             }
 
-            axisY.Title = "StdDev";
-            resetPlot();
-            for (int i = 0; i < stddevs.Length; ++i)
-            {
-                series1.Points.Add(new DataPoint(stddevs[i], points[i]));
-            }
+            axisX.Title = "StdDev [%]";
+            axisY.Title = plotDef.YName;
             model.InvalidatePlot(true);
+        }
+
+        private void Reseed_Click(object sender, RoutedEventArgs e)
+        {
+            seed = new Random().Next(1001, 999999);
+        }
+
+        private Image<Arthmetic, double> ComputeF()
+        {
+            var F = ComputeMatrix.F(new VectorOfPointF(pts1_n.ToArray()), new VectorOfPointF(pts2_n.ToArray()));
+            // F is normalized - lets denormalize it
+            F = N2.T().Multiply(F).Multiply(N1);
+            return F;
+        }
+
+        private void ErrorOfFComputation_Click(object sender, RoutedEventArgs e)
+        {
+            ResetTestMatrices();
+            ResetPoints();
+            ApplyNoise(0);
+            var Fref = ComputeF();
+            Fref = Fref.Mul(1.0 / Fref[2, 2]);
+
+            PlotFunctionForErrors(() =>
+            {
+                var F = ComputeF();
+                F = F.Mul(1.0 / F[2, 2]);
+                double error = (F - Fref).Norm;
+                return error;
+            }, "||Fref - Fest||");
         }
 
         private void EigenRatioForKnownK_Click(object sender, RoutedEventArgs e)
         {
-            PlotInErrorFunction((stddev) =>
+            PlotFunctionForErrors(() =>
             {
-                ApplyNoise(stddev);
-
-                var F = ComputeMatrix.F(new VectorOfPointF(pts1_n.ToArray()), new VectorOfPointF(pts2_n.ToArray()));
-                // F is normalized - lets denormalize it
-                F = N2.T().Multiply(F).Multiply(N1);
-
+                var F = ComputeF();
                 var E = ComputeMatrix.E(F, K);
                 var svd = new Svd(E);
                 double error = svd.S[1, 0] / svd.S[0, 0];
+
                 return error;
-            });
+            }, "s2 / s1");
         }
 
         private void ErrorOfKComputation_Click(object sender, RoutedEventArgs e)
         {
+            PlotFunctionForErrors(() =>
+            {
+                var F = ComputeF();
+                var Kest = EstimateCameraFromImagePair.K(F, px * 2, py * 2);
+                double error = (Kest - K).Norm / (fx + fy);
 
+                return error;
+            }, "|fx - fy_est|+|fy - fy_est| / (fx + fy)");
+        }
+
+        private void ErrorOfRComputation_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                var F = ComputeF();
+                var E = ComputeMatrix.E(F, K);
+                FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, K, E, out var R, out var t, out var pts3d);
+                return FindRError(R);
+            };
+            PrepareKs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "||angles - angles_ref||",
+                Function = testFunc,
+                CasesCount = 2,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
+        }
+
+        private double FindRError(Image<Arthmetic, double> R)
+        {
+            var rEst = RotationConverter.MatrixToEulerXYZ(R);
+            var rRef = RotationConverter.MatrixToEulerXYZ(R12);
+            var diff = (rEst - rRef);
+            double error = 0.0;
+            for (int i = 0; i < 3; ++i)
+            {
+                error += Math.Abs(diff[i, 0]);
+            }
+            return error * 180.0 / Math.PI;
+        }
+
+        private void PrepareCs(out List<Action> prepareFunc, out List<string> casesNames)
+        {
+            prepareFunc = new List<Action>()
+            {
+                () => { C2 = Utils.Vector(0, 0, 0); ResetPoints(); },
+                () => { C2 = Utils.Vector(0.57, 0.57, 0.57); ResetPoints(); },
+                () => { C2 = Utils.Vector(2.88, 2.88, 2.88); ResetPoints(); },
+                () => { C2 = Utils.Vector(14.4, 14.4, 14.4); ResetPoints(); },
+            };
+            casesNames = new List<string>() { "||C|| = 0", "||C|| = 1", "||C|| = 5", "||C|| = 25" };
+        }
+
+        private void ErrorOfRComputation2_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                var F = ComputeF();
+                var E = ComputeMatrix.E(F, K);
+                FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, K, E, out var R, out var t, out var pts3d);
+                return FindRError(R);
+            };
+            PrepareCs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "||angles - angles_ref||",
+                Function = testFunc,
+                CasesCount = 4,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
+        }
+
+        private void ErrorOfHComputation_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                var H = FindTransformation.EstimateHomography(pts1, pts2, K);
+                var svdH = new Svd(H);
+                return FindRError(H);
+            };
+            PrepareCs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "||angles - angles_ref||",
+                Function = testFunc,
+                CasesCount = 4,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
+        }
+
+        private void PrepareKs(out List<Action> prepareFunc, out List<string> casesNames)
+        {
+            prepareFunc = new List<Action>()
+            {
+                () => {},
+                () =>
+                {
+                    var F = ComputeF();
+                    K = EstimateCameraFromImagePair.K(F, px * 2, py * 2);
+                }
+            };
+            casesNames = new List<string>() { "Kref", "Kest" };
+        }
+
+        private double FindTError(Image<Arthmetic, double> t_est)
+        {
+            if (C2.Norm < 1e-3)
+            {
+                return 1.0;
+            }
+
+            var t_ref = R12.Multiply(C2).Mul(-1);
+            t_ref = t_ref.Mul(1.0 / t_ref.Norm);
+            t_est = t_est.Mul(1.0 / t_est.Norm);
+            return Math.Min((t_ref - t_est).Norm, (t_ref + t_est).Norm); // check + and - as it may be scaled by -1 which is ok
+        }
+
+        private void ErrorOfTComputation_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                var F = ComputeF();
+                var E = ComputeMatrix.E(F, K);
+                FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, K, E, out var R, out var t, out var pts3d);
+                return FindTError(t);
+            };
+            PrepareKs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "||t_ref - t_est||",
+                Function = testFunc,
+                CasesCount = 2,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
+        }
+
+        private void ErrorOfTComputation2_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                var F = ComputeF();
+                var E = ComputeMatrix.E(F, K);
+                FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, K, E, out var R, out var t, out var pts3d);
+                return FindTError(t);
+            };
+            PrepareCs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "||t_ref - t_est||",
+                Function = testFunc,
+                CasesCount = 4,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
+        }
+
+        private void ErrorOfHComputation2_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                var H = FindTransformation.EstimateHomography(pts1, pts2, K);
+                var svdH = new Svd(H);
+                return svdH.S[2, 0] / svdH.S[0, 0];
+            };
+            PrepareCs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "s3 / s1",
+                Function = testFunc,
+                CasesCount = 4,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
+        }
+
+        private void ErrorOfHComputation3_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                var H = FindTransformation.EstimateHomography(pts1, pts2, K);
+                var svdH = new Svd(H);
+                return Math.Abs(svdH.S[0, 0] - 1);
+            };
+            PrepareCs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "|s1 - 1|",
+                Function = testFunc,
+                CasesCount = 4,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
         }
     }
 }
