@@ -233,8 +233,8 @@ namespace Egomotion
             var Kinv = new Image<Arthmetic, double>(3, 3);
             CvInvoke.Invert(K, Kinv, Emgu.CV.CvEnum.DecompMethod.Svd);
 
-            var LP = Kinv.Multiply(Errors.Matrixify(left));
-            var RP = Kinv.Multiply(Errors.Matrixify(right));
+            var LP = Kinv.Multiply(Utils.Matrixify(left));
+            var RP = Kinv.Multiply(Utils.Matrixify(right));
 
             PointF[] lps = new PointF[left.Count];
             PointF[] rps = new PointF[left.Count];

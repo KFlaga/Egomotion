@@ -83,5 +83,8 @@
                 </Grid>
             </ScrollViewer>
         </TabItem>
+        <TabItem Header="Research">
+            <local:Plotter/>
+        </TabItem>
     </TabControl>
 </Window>

@@ -71,8 +71,8 @@ namespace Egomotion
             var Kinv = new Image<Arthmetic, double>(3, 3);
             CvInvoke.Invert(K, Kinv, Emgu.CV.CvEnum.DecompMethod.Svd);
 
-            var LP = Kinv.Multiply(Matrixify(left));
-            var RP = Kinv.Multiply(Matrixify(right));
+            var LP = Kinv.Multiply(Utils.Matrixify(left));
+            var RP = Kinv.Multiply(Utils.Matrixify(right));
 
             var estRP = R.Multiply(LP);
 
@@ -93,7 +93,10 @@ namespace Egomotion
             mean = errors.Sum() / errors.Count;
             median = errors[errors.Count / 2];
         }
-        
+    }
+
+    public static class Utils
+    {
         public static Image<Arthmetic, double> Matrixify(List<Image<Arthmetic, double>> pts)
         {
             Image<Arthmetic, double> X = new Image<Arthmetic, double>(pts.Count, pts[0].Rows);
@@ -158,6 +161,51 @@ namespace Egomotion
                 }
             }
             return X;
+        }
+        
+        public static Image<Arthmetic, double> Rx(double a)
+        {
+            double rad = a * Math.PI / 180.0;
+            double ca = Math.Cos(rad);
+            double sa = Math.Sin(rad);
+
+            return new Image<Arthmetic, double>(new double[,,] {
+                { {1}, {0}, {0} } ,
+                { {0}, {ca}, {-sa} } ,
+                { {0}, {sa}, {ca} } ,
+            });
+        }
+
+        public static Image<Arthmetic, double> Rz(double a)
+        {
+            double rad = a * Math.PI / 180.0;
+            double ca = Math.Cos(rad);
+            double sa = Math.Sin(rad);
+
+            return new Image<Arthmetic, double>(new double[,,] {
+                { {ca}, {-sa}, {0} } ,
+                { {sa}, {ca}, {0} } ,
+                { {0}, {0}, {1} } ,
+            });
+        }
+
+        public static Image<Arthmetic, double> I()
+        {
+            return new Image<Arthmetic, double>(new double[,,] {
+                { {1}, {0}, {0} } ,
+                { {0}, {1}, {0} } ,
+                { {0}, {0}, {1} } ,
+            });
+        }
+
+        public static Image<Arthmetic, double> Vector(params double[] vs)
+        {
+            var x = new Image<Arthmetic, double>(1, vs.Length);
+            for(int i = 0; i < vs.Length; ++i)
+            {
+                x[i, 0] = vs[i];
+            }
+            return x;
         }
     }
 }

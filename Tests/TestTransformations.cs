@@ -279,6 +279,9 @@ namespace Tests
             var rr0 = RotationConverter.MatrixToEulerXYZ(R12);
             var rr1 = RotationConverter.MatrixToEulerXYZ(RR);
 
+            double idealScale = T23.Norm / T12.Norm;
+            double idealScale2 = T12.Norm / T23.Norm;
+
             var tt0 = T12.Mul(1 / T12.Norm);
             var tt1 = TT.Mul(1 / TT.Norm).Mul(T12[0, 0] * TT[0, 0] < 0 ? -1 : 1);
             var tt1_23 = TT23.Mul(1 / TT23.Norm).Mul(T23[0, 0] * TT23[0, 0] < 0 ? -1 : 1);
@@ -298,6 +301,29 @@ namespace Tests
 
             var estRealRef23To12 = ScaleBy3dPointsMatch.TransfromBack3dPoints(RR, tt1, estReal23, scale);
 
+            double simpleScaleMean = 0.0;
+            for (int i = 0; i < pointsCount; ++i)
+            {
+                var p12 = new Image<Arthmetic, double>(new double[,,] {
+                    { {estReal12[1, i]}} ,
+                    { {estReal12[2, i]}} ,
+                    { {estReal12[3, i]}} ,
+                });
+                var p23 = new Image<Arthmetic, double>(new double[,,] {
+                    { {estReal23[0, i]}} ,
+                    { {estReal23[1, i]}} ,
+                    { {estReal23[2, i]}} ,
+                });
+                
+                double n1 = p12.Norm;
+                double n2 = p23.Norm;
+                double simpleScale = n2 / n1;
+                simpleScaleMean += simpleScale;
+            }
+
+            simpleScaleMean /= pointsCount;
+            double simpleScaleMean2 =  1 / simpleScaleMean;
+
             // TODO: compute below only on inliers
             Image<Arthmetic, double> inliersOnly12 = new Image<Arthmetic, double>(result.Inliers.Count, 4);
             Image<Arthmetic, double> inliersOnly12Ref = new Image<Arthmetic, double>(result.Inliers.Count, 4);
@@ -314,7 +340,7 @@ namespace Tests
             }
 
 
-            var ptsRealM = Errors.Matrixify(ptsReal);
+            var ptsRealM = Utils.Matrixify(ptsReal);
             Errors.TraingulationError(ptsRealM, estReal12, out double mean1x, out double median1x, out List<double> errors1x);
             Errors.TraingulationError(ptsRealM, estRealRef23To12, out double mean1z, out double median1z, out List<double> errors1z);
 
@@ -388,7 +414,7 @@ namespace Tests
                 res[1, i] = pts[1, i] - C[1, 0];
                 res[2, i] = pts[2, i] - C[2, 0];
             }
-            res = Errors.PutRTo4x4(R).Multiply(res);
+            res = Utils.PutRTo4x4(R).Multiply(res);
             return res;
         }
 

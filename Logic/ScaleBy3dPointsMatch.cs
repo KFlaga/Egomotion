@@ -64,7 +64,7 @@ namespace Egomotion
 
                 if(last3dPoints != null && R12 != null)
                 {
-                    last3dPoints = Errors.PutRTo4x4(frame.RotationMatrix).Multiply(last3dPoints);
+                    last3dPoints = Utils.PutRTo4x4(frame.RotationMatrix).Multiply(last3dPoints);
                     R12 = frame.RotationMatrix.Multiply(R12);
                 }
                 else
@@ -244,7 +244,7 @@ namespace Egomotion
 
         public static Matrix TransfromBack3dPoints(Matrix R, Matrix t, Matrix pts23, double scale)
         {
-            var backprojected = Errors.PutRTo4x4(R.T()).Multiply(pts23);
+            var backprojected = Utils.PutRTo4x4(R.T()).Multiply(pts23);
             var C = ComputeMatrix.Center(t, R);
             for (int i = 0; i < backprojected.Cols; ++i)
             {
@@ -361,7 +361,7 @@ namespace Egomotion
 
         public RansacScaleEstimation(Image<Arthmetic, double> pts12, Image<Arthmetic, double> pts23, Image<Arthmetic, double> R, Image<Arthmetic, double> C)
         {
-            Pts23 = Errors.PutRTo4x4(R.T()).Multiply(pts23);
+            Pts23 = Utils.PutRTo4x4(R.T()).Multiply(pts23);
             Pts12 = pts12.Clone();
             RansacPoints = new List<int>(Pts12.Cols);
             for (int i = 0; i < Pts12.Cols; ++i)
