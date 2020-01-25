@@ -147,12 +147,13 @@ namespace Egomotion
                 { {0}, {0 }, {1 } } ,
             });
 
-            C2 = Utils.Vector(16, 16, -13);
+            C2 = Utils.Vector(8, 8, -6);
             C3 = Utils.Vector(40, -20, 15);
 
-            R12 = Utils.Rx(5.0).Multiply(Utils.Rz(5.0));
-            R13 = Utils.Rx(0.0).Multiply(Utils.Rz(10.0));
-            R23 = R12.T().Multiply(R13);
+            R12 = Utils.Rx(0.0).Multiply(Utils.Rz(5.0));
+            R13 = Utils.Rx(0.0).Multiply(Utils.Rz(5.0));
+            
+            R23 = R13.Multiply(R12.T());
 
             C12 = C2.Clone();
             C23 = R12.Multiply(C3.Sub(C2));
@@ -201,7 +202,7 @@ namespace Egomotion
             pixelRange = 0.25 * (rangeLx + rangeLy + rangeRx + rangeRy);
         }
 
-        int seed = 564071;
+        int seed = 679447;
         private void ApplyNoise(double stddev)
         {
             pts1 = new List<PointF>();
@@ -245,7 +246,7 @@ namespace Egomotion
             public Func<double> Function;
 
             public int CasesCount = 1;
-            public List<Action> PrepareCase;
+            public List<Action<double>> PrepareCase;
             public List<string> CasesNames;
         }
 
@@ -257,27 +258,27 @@ namespace Egomotion
                 YName = yName,
                 CasesCount = 1,
                 CasesNames = new List<string>() { "" },
-                PrepareCase = new List<Action>() { () => { } }
+                PrepareCase = new List<Action<double>>() { (_) => { } }
             });
         }
 
         void PlotFunctionForErrors(PlotDefinition plotDef)
         {
             resetPlot();
-            double[] stddevs = new double[] { 0, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01 };
+            double[] stddevs = new double[] { 0, 0.00025, 0.0005, 0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.01 };
 
             for (int i = 0; i < plotDef.CasesCount; ++i)
             {
                 ResetTestMatrices();
                 ResetPoints();
 
-                plotDef.PrepareCase[i]();
                 allSeries[i].Title = plotDef.CasesNames[i];
 
                 List<double> points = new List<double>();
                 foreach (double s in stddevs)
                 {
                     double scaledDev = s * pixelRange;
+                    plotDef.PrepareCase[i](scaledDev);
                     ApplyNoise(scaledDev);
                     points.Add(plotDef.Function());
                 }
@@ -381,14 +382,14 @@ namespace Egomotion
             return error * 180.0 / Math.PI;
         }
 
-        private void PrepareCs(out List<Action> prepareFunc, out List<string> casesNames)
+        private void PrepareCs(out List<Action<double>> prepareFunc, out List<string> casesNames)
         {
-            prepareFunc = new List<Action>()
+            prepareFunc = new List<Action<double>>()
             {
-                () => { C2 = Utils.Vector(0, 0, 0); ResetPoints(); },
-                () => { C2 = Utils.Vector(0.57, 0.57, 0.57); ResetPoints(); },
-                () => { C2 = Utils.Vector(2.88, 2.88, 2.88); ResetPoints(); },
-                () => { C2 = Utils.Vector(14.4, 14.4, 14.4); ResetPoints(); },
+                (_) => { C2 = Utils.Vector(0, 0, 0); C3 = C2.Mul(2.0); ResetPoints(); },
+                (_) => { C2 = Utils.Vector(0.57, 0.57, 0.57); C3 = C2.Mul(2.0); ResetPoints(); },
+                (_) => { C2 = Utils.Vector(2.88, 2.88, 2.88); C3 = C2.Mul(2.0); ResetPoints(); },
+                (_) => { C2 = Utils.Vector(14.4, 14.4, 14.4); C3 = C2.Mul(2.0); ResetPoints(); },
             };
             casesNames = new List<string>() { "||C|| = 0", "||C|| = 1", "||C|| = 5", "||C|| = 25" };
         }
@@ -432,13 +433,15 @@ namespace Egomotion
             });
         }
 
-        private void PrepareKs(out List<Action> prepareFunc, out List<string> casesNames)
+        private void PrepareKs(out List<Action<double>> prepareFunc, out List<string> casesNames)
         {
-            prepareFunc = new List<Action>()
+            prepareFunc = new List<Action<double>>()
             {
-                () => {},
-                () =>
+                (_) => {},
+                (stddev) =>
                 {
+                    ResetPoints();
+                    ApplyNoise(stddev);
                     var F = ComputeF();
                     K = EstimateCameraFromImagePair.K(F, px * 2, py * 2);
                 }
@@ -530,6 +533,93 @@ namespace Egomotion
             PlotFunctionForErrors(new PlotDefinition()
             {
                 YName = "|s1 - 1|",
+                Function = testFunc,
+                CasesCount = 4,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
+        }
+
+        private void ErrorOfScaleComputation_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                if (C2.Norm < 1e-3)
+                {
+                    return 1.0;
+                }
+
+                var F12 = ComputeMatrix.F(new VectorOfPointF(pts1_n.ToArray()), new VectorOfPointF(pts2_n.ToArray()));
+                F12 = N2.T().Multiply(F12).Multiply(N1);
+
+                var F23 = ComputeMatrix.F(new VectorOfPointF(pts2_n.ToArray()), new VectorOfPointF(pts3_n.ToArray()));
+                F23 = N3.T().Multiply(F23).Multiply(N2);
+
+                var E12 = ComputeMatrix.E(F12, K);
+                var E23 = ComputeMatrix.E(F23, K);
+
+                FindTransformation.DecomposeToRTAndTriangulate(pts1, pts2, K, E12, out var eR12, out var eT12, out var pts3d12);
+                FindTransformation.DecomposeToRTAndTriangulate(pts2, pts3, K, E23, out var eR23, out var eT23, out var pts3d23);
+
+                eT12 = eT12.Mul(1.0 / eT12.Norm);
+                eT23 = eT23.Mul(1.0 / eT23.Norm);
+
+                ScaleBy3dPointsMatch.FindBestScale(eR12, eT12, eR23, eT23, K, pts1, pts2, pts3, 10, out double scale, out double confidence, out var inliners);
+                
+                double refScale = eT23.Norm / eT12.Norm;
+                double error = scale / refScale;
+
+                return error;
+            };
+            PrepareCs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "scale_est / scale_ref; scale = ||t23|| / ||t12||",
+                Function = testFunc,
+                CasesCount = 4,
+                PrepareCase = prepareFunc,
+                CasesNames = casesNames
+            });
+        }
+
+        private void ErrorOfScaleComputation2_Click(object sender, RoutedEventArgs e)
+        {
+            Func<double> testFunc = () =>
+            {
+                if (C2.Norm < 1e-3)
+                {
+                    return 1.0;
+                }
+
+                C12 = C2.Clone();
+                C23 = R12.Multiply(C3.Sub(C2));
+
+                T12 = R12.Multiply(C12).Mul(-1);
+                T23 = R23.Multiply(C23).Mul(-1);
+
+                //T12 = T12.Mul(1.0 / T12.Norm);
+                //if (T12[0, 0] < 0)
+                //    T12 = T12.Mul(-1.0);
+
+                //T23 = T23.Mul(1.0 / T23.Norm);
+                //if (T23[0, 0] < 0)
+                //    T23 = T23.Mul(-1.0);
+
+                FindTransformation.TriangulateChieral(pts1, pts2, K, R12, T12, out var est3d_12);
+                FindTransformation.TriangulateChieral(pts2, pts3, K, R23, T23, out var est3d_23);
+                var backprojected23to12 = ScaleBy3dPointsMatch.TransfromBack3dPoints(R12, T12, est3d_23, 1.0);
+
+                ScaleBy3dPointsMatch.FindBestScale(R12, T12, R23, T23, K, pts1, pts2, pts3, 10, out double scale, out double confidence, out var inliners);
+                
+                double refScale = T23.Norm / T12.Norm;
+                double error = scale / refScale;
+
+                return error;
+            };
+            PrepareCs(out var prepareFunc, out var casesNames);
+            PlotFunctionForErrors(new PlotDefinition()
+            {
+                YName = "scale_est / scale_ref; scale = ||t23|| / ||t12||",
                 Function = testFunc,
                 CasesCount = 4,
                 PrepareCase = prepareFunc,

@@ -1,6 +1,7 @@
 ﻿using Emgu.CV;
 using Emgu.CV.Features2D;
 using Emgu.CV.Structure;
+using Emgu.CV.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -90,10 +91,11 @@ namespace Egomotion
         public double TakeBest { get; set; } = 50.0;
         public int MaxPairsForK { get; set; } = 50;
         public int Step { get; set; } = 4;
-
+        public VectorOfFloat DistCoeffs { get; set; }
+        
         public double MaxDistance(Mat frame)
         {
-            return Math.Max(10.0, 0.05 * (frame.Rows + frame.Cols));
+            return Math.Max(10.0, 0.05 * (frame.Rows + frame.Cols)) * Step;
         }
 
         ScaleBy3dPointsMatch scaler = new ScaleBy3dPointsMatch();
@@ -145,6 +147,21 @@ namespace Egomotion
         }
 
         bool recursive = false;
+        
+        private Mat Undistort(Mat image)
+        {
+            if (image != null)
+            {
+                var dimage = image.Clone();
+                var newK = new Mat();
+                var map1 = new Mat();
+                var map2 = new Mat();
+                Emgu.CV.CvInvoke.InitUndistortRectifyMap(K, DistCoeffs, new Mat(), newK, image.Size, Emgu.CV.CvEnum.DepthType.Cv32F, map1, map2);
+                Emgu.CV.CvInvoke.Remap(image, dimage, map1, map2, Emgu.CV.CvEnum.Inter.Cubic, Emgu.CV.CvEnum.BorderType.Constant);
+                return dimage;
+            }
+            return image;
+        }
 
         private void UdpateFrame(int n)
         {
@@ -163,6 +180,9 @@ namespace Egomotion
                 {
                     var frame = frames[n];
                     var frame2 = frames[n + Step];
+
+                    frame = Undistort(frame);
+                    frame2 = Undistort(frame2);
 
                     var mat = frame.ToImage<Bgr, byte>();
                     var mat2 = frame2.ToImage<Bgr, byte>();

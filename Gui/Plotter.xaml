@@ -44,6 +44,12 @@
             <Button x:Name="errorOfHComputation3" Click="ErrorOfHComputation3_Click">
                 Ochylenie od 1 wartości własnych H dla różnych C
             </Button>
+            <Button x:Name="errorOfScaleComputation" Click="ErrorOfScaleComputation_Click">
+                Błąd skali dla różnych C
+            </Button>
+            <Button x:Name="errorOfScaleComputation2" Click="ErrorOfScaleComputation2_Click">
+                Błąd skali dla idealnych punktow dla różnych C
+            </Button>
         </WrapPanel>
         <oxy:PlotView x:Name="plot">
         </oxy:PlotView>

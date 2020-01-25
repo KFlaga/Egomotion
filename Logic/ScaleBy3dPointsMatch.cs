@@ -17,7 +17,8 @@ namespace Egomotion
     public class ScaleBy3dPointsMatch
     {
         public Matrix K { get; set; }
-        public double RotationTreshold { get; set; } = 0.02;
+        public double RotationTreshold1 { get; set; } = 0.03;
+        public double RotationTreshold2 { get; set; } = 0.02;
         public int MinimumCorrespondencesNeeded { get; set; } = 8;
 
         int lastGoodLeftImage;
@@ -54,7 +55,7 @@ namespace Egomotion
 
             // 1a) For now lets determine it by finding if lone rotation is good enough
             var H = FindTransformation.EstimateHomography(match23.LeftPointsList, match23.RightPointsList, K);
-            if (FindTransformation.IsPureRotation(H, RotationTreshold))
+            if (FindTransformation.IsPureRotation(H, RotationTreshold1, RotationTreshold2))
             {
                 // 1c) If not then transformation is described only by rotation
                 // 1b) Find rotation and rotate all points in current set
@@ -84,8 +85,6 @@ namespace Egomotion
                 isContinuous = false;
                 return null;
             }
-            // Normalize to |t| = 1
-            t23 = t23.Mul(1.0 / t23.Norm);
 
             frame.Rotation = RotationConverter.MatrixToEulerXYZ(R23);
             frame.RotationMatrix = R23;
@@ -152,6 +151,10 @@ namespace Egomotion
                     var correspondences = Correspondences.FindCorrespondences12to23(lastGoodMatch, match23);
                     if (correspondences.Count >= MinimumCorrespondencesNeeded)
                     {
+                        // Normalize to |t| = 1
+                        t12 = t12.Mul(1.0 / t12.Norm);
+                        t23 = t23.Mul(1.0 / t23.Norm);
+
                         FindBestScale(R12, t12, R23, t23, K, correspondences, MinimumCorrespondencesNeeded, out double scale, out double confidence, out List<int> inliers);
 
                         t23 = t23.Mul(scale);
@@ -177,25 +180,22 @@ namespace Egomotion
             return frame;
         }
 
-        public static void FindBestScale(Matrix R12, Matrix t12, Matrix R23, Matrix t23, Matrix K, List<Correspondences.MatchPair> correspondences, int minSampleSize,
+        public static void FindBestScale(Matrix R12, Matrix t12, Matrix R23, Matrix t23, Matrix K,
+            List<PointF> pts1, List<PointF> pts2, List<PointF> pts3, int minSampleSize,
             out double scale, out double confidence, out List<int> inliers)
         {
-            var pts1 = correspondences.Select((x) => x.Kp1.Point).ToList();
-            var pts2 = correspondences.Select((x) => x.Kp2.Point).ToList();
-            var pts3 = correspondences.Select((x) => x.Kp3.Point).ToList();
-
             FindTransformation.TriangulateChieral(pts1, pts2, K, R12, t12, out var est3d_12);
             FindTransformation.TriangulateChieral(pts2, pts3, K, R23, t23, out var est3d_23);
-
+            
             // Find best scale, so that both sets will be closest
             RansacScaleEstimation ransacModel = new RansacScaleEstimation(est3d_12, est3d_23, R12, ComputeMatrix.Center(t12, R12));
 
-            int sampleSize = Math.Max(minSampleSize, (int)(0.05 * correspondences.Count));
-            int minGoodPoints = (int)(0.4 * correspondences.Count);
+            int sampleSize = Math.Max(minSampleSize, (int)(0.05 * pts1.Count));
+            int minGoodPoints = (int)(0.4 * pts1.Count);
             int maxIterations = 100;
             double meanRefPointSize = GetMeanSize(est3d_12);
             double threshold = meanRefPointSize * meanRefPointSize * 0.08;
-            var result = RANSAC.ProcessMostInliers(ransacModel, maxIterations, sampleSize, minGoodPoints, threshold);
+            var result = RANSAC.ProcessMostInliers(ransacModel, maxIterations, sampleSize, minGoodPoints, threshold, 1.0);
             scale = (double)result.BestModel;
             inliers = result.Inliers;
 
@@ -222,7 +222,16 @@ namespace Egomotion
             double relativeError = error / (meanSize * meanSize);
             Errors.TraingulationError(inliersOnly12, inliersOnly23, out double mean, out double median, out List<double> errs);
 
-            confidence = (double)inliers.Count / (double)correspondences.Count;
+            confidence = (double)inliers.Count / (double)pts1.Count;
+        }
+
+        public static void FindBestScale(Matrix R12, Matrix t12, Matrix R23, Matrix t23, Matrix K, List<Correspondences.MatchPair> correspondences, int minSampleSize,
+            out double scale, out double confidence, out List<int> inliers)
+        {
+            var pts1 = correspondences.Select((x) => x.Kp1.Point).ToList();
+            var pts2 = correspondences.Select((x) => x.Kp2.Point).ToList();
+            var pts3 = correspondences.Select((x) => x.Kp3.Point).ToList();
+            FindBestScale(R12, t12, R23, t23, K, pts1, pts2, pts3, minSampleSize, out scale, out confidence, out inliers);
         }
 
         public static double GetMeanSize(Matrix pts12, Matrix pts23)
@@ -366,9 +375,9 @@ namespace Egomotion
             RansacPoints = new List<int>(Pts12.Cols);
             for (int i = 0; i < Pts12.Cols; ++i)
             {
-                Pts12[0, i] = Pts12[0, i] / Pts12[3, i] - C[0, 0];
-                Pts12[1, i] = Pts12[1, i] / Pts12[3, i] - C[1, 0];
-                Pts12[2, i] = Pts12[2, i] / Pts12[3, i] - C[2, 0];
+                Pts12[0, i] = Pts12[0, i] - C[0, 0];
+                Pts12[1, i] = Pts12[1, i] - C[1, 0];
+                Pts12[2, i] = Pts12[2, i] - C[2, 0];
                 RansacPoints.Add(i);
             }
         }

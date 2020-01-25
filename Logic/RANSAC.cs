@@ -22,10 +22,10 @@ namespace Egomotion
             public List<PointT> Inliers;
         }
 
-        public static Results<PointT> Process<PointT>(IRansacModel<PointT> model, int maxIterations, int sampleSize, int minGoodPoints, double threshold)
+        public static Results<PointT> Process<PointT>(IRansacModel<PointT> model, int maxIterations, int sampleSize, int minGoodPoints, double threshold, object initialModel)
         {
             Random random = new Random((int)DateTime.Now.Ticks);
-            object bestModel = null;
+            object bestModel = initialModel;
             double bestError = 10e8;
             
             for (int i = 0; i < maxIterations; ++i)
@@ -75,10 +75,10 @@ namespace Egomotion
             }
         }
 
-        public static Results<PointT> ProcessMostInliers<PointT>(IRansacModel<PointT> model, int maxIterations, int sampleSize, int minGoodPoints, double threshold)
+        public static Results<PointT> ProcessMostInliers<PointT>(IRansacModel<PointT> model, int maxIterations, int sampleSize, int minGoodPoints, double threshold, double initialModel)
         {
             Random random = new Random((int)DateTime.Now.Ticks);
-            object bestModel = null;
+            object bestModel = initialModel;
             List<PointT> bestInliers = new List<PointT>();
 
             for (int i = 0; i < maxIterations; ++i)

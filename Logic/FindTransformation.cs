@@ -28,7 +28,7 @@ namespace Egomotion
             var lps_n = lps.ToList();
             var rps_n = rps.ToList();
             var H = EstimateHomography(lps_n, rps_n, K);
-            if(IsPureRotation(H, 0.02))
+            if(IsPureRotation(H))
             {
                 OdometerFrame odometerFrame = new OdometerFrame();
                 odometerFrame.Rotation = RotationConverter.MatrixToEulerXYZ(H);
@@ -250,16 +250,16 @@ namespace Egomotion
             return h.ToImage<Arthmetic, double>();
         }
 
-        public static bool IsPureRotation(Image<Arthmetic, double> H, double threshold = 0.05)
+        public static bool IsPureRotation(Image<Arthmetic, double> H, double t_ratio = 0.03, double t_scale = 0.02)
         {
             var svd = new Svd(H);
             // If this is rotation all eigenvalues should be close to 1.0
             double ratio = svd.S[2, 0] / svd.S[0, 0];
-            if(ratio < 1.0 - threshold)
+            if(ratio < 1.0 - t_ratio)
             {
                 return false;
             }
-            if(Math.Abs(svd.S[0, 0] - 1.0) > threshold)
+            if(Math.Abs(svd.S[0, 0] - 1.0) > t_scale)
             {
                 return false;
             }

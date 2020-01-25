@@ -296,7 +296,7 @@ namespace Tests
             int maxIterations = 1000;
             double meanRefPointSize = ScaleBy3dPointsMatch.GetMeanSize(estReal12);
             double threshold = meanRefPointSize * meanRefPointSize * 0.1;
-            var result = RANSAC.ProcessMostInliers(ransacModel, maxIterations, sampleSize, minGoodPoints, threshold);
+            var result = RANSAC.ProcessMostInliers(ransacModel, maxIterations, sampleSize, minGoodPoints, threshold, 1.0);
             double scale = (double)result.BestModel;
 
             var estRealRef23To12 = ScaleBy3dPointsMatch.TransfromBack3dPoints(RR, tt1, estReal23, scale);

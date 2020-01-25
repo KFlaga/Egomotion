@@ -42,6 +42,14 @@ namespace Egomotion
             Image<Arthmetic, double> ptsReal, Image<Arthmetic, double> estReal,
             out double mean, out double median, out List<double> errors)
         {
+            if(ptsReal.Cols == 0)
+            {
+                mean = 1e12;
+                median = 1e12;
+                errors = new List<double>();
+                return;
+            }
+
             errors = new List<double>();
             for (int i = 0; i < ptsReal.Cols; ++i)
             {

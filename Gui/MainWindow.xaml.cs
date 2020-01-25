@@ -195,6 +195,7 @@ namespace Egomotion
         int Step => ((int)Parameter.ValueFor("Video Step", parametersInput.Parameters, parametersInput.Values));
         DistanceType DistanceType => ((DistanceType)Parameter.ValueFor("DistanceType", parametersInput.Parameters, parametersInput.Values));
         Image<Arthmetic, Double> matK;
+        VectorOfFloat distCoeffs;
 
         private void ProcessImage(object sender, RoutedEventArgs e)
         {
@@ -283,7 +284,7 @@ namespace Egomotion
         private void LoadParK(object sender, RoutedEventArgs e)
         {
             FileOp.LoadFromFile((file, path) => {
-                SaveAndLoad.LoadCalibration(file, out Mat camMat, out VectorOfFloat distCoeffs);
+                SaveAndLoad.LoadCalibration(file, out Mat camMat, out distCoeffs);
                 matK = camMat.ToImage<Arthmetic, Double>();
             });
         }
@@ -297,6 +298,7 @@ namespace Egomotion
 
             List<Mat> framesFromVideo = ImageLoader.LoadVideo();
             myplayer.K = matK;
+            myplayer.DistCoeffs = distCoeffs;
             myplayer.Detector = Detector;
             myplayer.Descriptor = Descriptor;
             myplayer.DistanceType = DistanceType;
